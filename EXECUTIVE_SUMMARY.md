@@ -4,16 +4,18 @@ Updated at the end of each sprint. This is the 60-second version of where VoiceI
 
 ---
 
-## Current status — Sprint 1 complete
+## Current status — Sprint 2 complete
 
 **What VoiceIQ is:** a platform that turns scattered customer feedback into a prioritized, evidence-based product opportunity map, instead of relying on whoever complained most recently or most loudly.
 
-**Where we are:** Sprint 1 is done. A user can sign up, get provisioned into an organization, invite teammates with role-based access (admin/member/viewer), and get feedback into the system three ways — logging it manually, importing a CSV export from another tool, or embedding a public feedback widget on their own site. Everything lands in one filterable, searchable list. There is no AI clustering or scoring yet — that's the entire focus of Sprint 2. Right now, VoiceIQ is a well-structured, secure, multi-tenant feedback repository; it becomes an intelligence platform next.
+**Where we are:** Sprint 2 is done — VoiceIQ is now an intelligence platform, not just a feedback repository. Every piece of feedback gets embedded and automatically clustered into a theme with related feedback, whether it arrived through manual entry, a CSV import, or the public widget. Each theme gets an AI-generated name and summary, individual feedback gets sentiment and pain-point tagging, and every theme carries a computed opportunity score (Reach × Impact × Confidence ÷ Effort) that's always traceable back to the real feedback behind it and always overridable by a PM who knows something the data doesn't. A trend view shows which themes are heating up or cooling off week over week.
 
-**Why it matters:** every sprint from here compounds on this foundation. Getting multi-tenancy, access control, and clean ingestion right now is what makes the clustering and scoring work in Sprint 2 trustworthy — garbage in, garbage out applies directly to an embedding pipeline.
+**The honest caveat:** the underlying AI services (Hugging Face for embeddings, Groq for sentiment and labeling) aren't connected to live accounts yet. Every piece of this pipeline has been verified to fail gracefully in their absence — feedback still saves correctly, nothing crashes, everything just stays unprocessed until credentials exist and someone works through the backlog. The mechanics (clustering math, scoring formula, trend comparison) have all been tested against real data; what hasn't been tested yet is what real embeddings and real LLM output actually look like once those two accounts are created.
 
-**What's next:** Sprint 2 adds the actual intelligence — embeddings, clustering into themes, sentiment extraction, and opportunity scoring. That's when VoiceIQ starts answering "what should we build next, and why" instead of just "here's what customers said."
+**Why it matters:** the whole value proposition — "an evidence-based opportunity map instead of anecdote-based prioritization" — depends on this sprint's output being trustworthy, not just present. That's why so much of this sprint's effort went into verification (testing edge cases like sparse data and partial failures, not just the happy path) rather than just wiring features together.
+
+**What's next:** Sprint 3 turns opportunity scores into roadmap decisions and executive-facing output — data-backed personas built from real clustered feedback, a roadmap tracker linked to themes, and an auto-drafted executive narrative of what customers are asking for and why it matters.
 
 ---
 
-*Sprint 2 and 3 summaries will be appended here as they complete.*
+*Sprint 3's summary will be appended here as it completes.*

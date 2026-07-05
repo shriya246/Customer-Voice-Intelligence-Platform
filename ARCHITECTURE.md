@@ -64,7 +64,15 @@ This keeps the RLS policy set on `feedback_items` limited to "authenticated org 
 
 **RLS gotcha worth remembering for CSV import and the widget too:** `.upsert()`'s conflict path is an `UPDATE` at the SQL level even when no column value actually changes, so it needs an `UPDATE` policy, not just `INSERT`. `channels` already had one; `tags` didn't (only `SELECT`/`INSERT`/`DELETE` from the core schema migration) and failed with `42501` the first time this pattern was tested against a real second call with the same name. Fixed in `20260705150000_tags_update_policy.sql`. Any future find-or-create-by-upsert against a table needs to be checked for this, not just assumed to work because `INSERT` succeeds on the first call.
 
-Every ingestion path logs `feedback.created` to `audit_log` via `log_audit_event`, same pattern as the settings actions.
+Every ingestion path logs to `audit_log` via `log_audit_event` (`feedback.created` for manual entry, `feedback.csv_imported` for CSV import), same pattern as the settings actions.
+
+## Feedback ingestion: CSV import
+
+`/feedback/import` is a client-side wizard (upload → map columns → preview → confirm), not a server round-trip per step — the whole CSV is parsed and held in browser state (via `papaparse`), and only the final mapped rows get sent to the server, as a direct call to a `"use server"` function rather than a form submission (`importFeedbackCsv(channelName, rows)`), since the data being submitted is derived client-side rather than coming from form fields.
+
+Deliberately **one channel for the entire import, not a per-row column**: a real CSV import is normally a single export from one source (a Zendesk export, an App Store reviews export), so requiring a channel column per row would fight how these files actually look. Content, customer name, and tags are the only per-row column mappings.
+
+Bulk-insert strategy: unique channel (one row) and all unique tag names across the whole file are upserted once, in a single batched call each (`.upsert([...])` with an array, not one call per row) — confirmed this correctly dedupes rather than creating N rows for the same repeated tag name across the file. Customers are resolved with one `select ... in (names)` for existing matches, then one batched insert for whatever's missing. Only the actual `feedback_items` + `feedback_item_tags` inserts happen one row at a time, in a loop — deliberately, not a missed optimization: this is what makes per-row error reporting possible (a bad row doesn't abort the batch, and the caller gets back exactly which row numbers failed and why), and at the row counts a CSV import realistically involves here, the per-row round trip cost is a non-issue. Capped at 2000 rows per import as a sanity limit, not a scalability tuned number.
 
 ## Auth & onboarding flow
 

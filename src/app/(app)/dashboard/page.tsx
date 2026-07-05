@@ -18,12 +18,20 @@ export default async function DashboardPage() {
           </p>
         </div>
         {membership?.role !== "viewer" && (
-          <Link
-            href="/feedback/new"
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
-          >
-            Log feedback
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/feedback/import"
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
+            >
+              Import CSV
+            </Link>
+            <Link
+              href="/feedback/new"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
+            >
+              Log feedback
+            </Link>
+          </div>
         )}
       </div>
       <div className="mt-8 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-neutral-700">

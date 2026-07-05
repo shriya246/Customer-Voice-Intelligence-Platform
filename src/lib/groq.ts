@@ -139,3 +139,40 @@ export async function generatePersonas(
 
   return personasResponseSchema.parse(JSON.parse(raw)).personas;
 }
+
+const competitorSummarySchema = z.object({
+  summary: z.string().min(1).max(800),
+});
+
+/**
+ * Summarizes feedback that mentions a competitor by name -- the caller
+ * finds the matching feedback_items (a plain ILIKE search, not semantic),
+ * this just synthesizes what customers are actually saying across them.
+ */
+export async function summarizeCompetitorMentions(
+  competitorName: string,
+  mentions: string[]
+): Promise<string> {
+  const completion = await getClient().chat.completions.create({
+    model: MODEL,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content:
+          `You summarize what customers say about a competitor ("${competitorName}") based on real feedback excerpts that mention them. ` +
+          'Respond only with JSON matching exactly this shape: {"summary": 2-4 sentences summarizing the recurring themes in how customers compare VoiceIQ\'s customer\'s product to this competitor -- pricing, missing features, switching reasons, whatever actually recurs}. ' +
+          "Base this only on the excerpts given, don't speculate beyond them.",
+      },
+      {
+        role: "user",
+        content: mentions.map((m, i) => `${i + 1}. ${m}`).join("\n"),
+      },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new Error("Groq returned no content for competitor summarization");
+
+  return competitorSummarySchema.parse(JSON.parse(raw)).summary;
+}

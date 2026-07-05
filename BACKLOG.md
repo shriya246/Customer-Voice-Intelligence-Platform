@@ -40,7 +40,8 @@ Done when: the full loop (feedback in → clustered/scored → persona/roadmap/e
 - [x] AI-generated, data-backed personas from clustered feedback
   - [ ] *Follow-up:* Groq key not connected yet — generation call itself unverified until credentials exist (see chat)
 - [x] Feature request tracker linked to themes, with roadmap status
-- [ ] Competitive insight notes field (manual + AI-assisted summarization)
+- [x] Competitive insight notes field (manual + AI-assisted summarization)
+  - [ ] *Follow-up:* Groq key not connected yet — the "summarize mentions" call itself unverified until credentials exist (see chat)
 - [ ] Executive summary generator (auto-drafted narrative)
 - [ ] Hardening pass: RLS audit, rate-limit audit, error tracking, core-flow test coverage
 - [ ] PM docs: `GTM_STRATEGY.md`, `PRICING_STRATEGY.md`, final `EXECUTIVE_SUMMARY.md`, one-page Executive Presentation doc

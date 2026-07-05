@@ -158,6 +158,14 @@ The actual RICE formula lives in `src/lib/scoring.ts`, in application code, not 
 
 Same graceful-degradation posture as the rest of Sprint 2/3's AI features: no Groq key exists yet, so the generation call itself is the one part of this feature not yet verified against real output — everything around it (schema, RLS, the replace-on-success ordering, the theme-name-mapping defensive logic) has been.
 
+## Sprint 3: competitive insight notes
+
+`competitive_notes` (org_id, competitor_name, manual `note`, optional `ai_summary`) is deliberately two separate text fields, not one: `note` is what a PM typed, `ai_summary` is generated separately and never silently overwrites or merges into it — a PM's own words and an AI-generated summary should stay visibly distinct, not blended into one field where it's unclear which parts came from where.
+
+**"AI-assisted" here means literal substring search, not semantic search:** finding feedback that mentions a competitor is a plain `ilike('%competitor_name%')` over `feedback_items.content`, not an embedding-similarity lookup — a competitor's actual name is exactly the kind of thing literal matching handles correctly and semantic search could plausibly miss or over-match (a vector search might surface feedback about "competitors in general" without the specific name appearing at all, which isn't what "customers who specifically mentioned Acme Rival" is asking for). Groq then summarizes only the matched excerpts, explicitly told not to speculate beyond them.
+
+**Verified against live data (mention search + the surrounding CRUD/RLS, not the Groq summarization call itself, which needs credentials that don't exist yet):** inserted feedback items, some mentioning a test competitor name and some not, confirmed the `ilike` search matched exactly the relevant ones; confirmed `ai_summary` persists correctly on update, independent of the manual `note` field; confirmed a viewer can read notes but is blocked from creating one.
+
 ## Auth & onboarding flow
 
 Sign-up collects only name, email, and password — no organization name at that step, to keep the form short. What happens next depends on whether the Supabase project requires email confirmation, which the app doesn't assume either way:

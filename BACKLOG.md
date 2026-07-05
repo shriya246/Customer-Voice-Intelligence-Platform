@@ -13,7 +13,7 @@ Done when: a user can sign up, create an org, import a batch of feedback via CSV
 - [x] **Auth & onboarding** — sign up / sign in / sign out via Supabase Auth, session middleware, protected routes, auto-create org on first signup
 - [x] **Organizations, teams & RBAC UI** — org settings page, invite/manage members, role assignment (admin/member/viewer), org switcher
 - [x] **Audit log** — record key actions server-side, admin-facing view
-- [ ] **Feedback ingestion: manual entry** — form + Zod validation + storage
+- [x] **Feedback ingestion: manual entry** — form + Zod validation + storage
 - [ ] **Feedback ingestion: CSV import** — upload, column mapping, preview, bulk insert, per-row error reporting
 - [ ] **Feedback ingestion: public widget embed** — embeddable snippet + public rate-limited API endpoint writing into a channel
 - [ ] **Feedback list/table view** — filter by channel, date range, tag; search; pagination

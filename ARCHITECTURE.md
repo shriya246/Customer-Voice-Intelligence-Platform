@@ -58,6 +58,14 @@ The embeddable public widget has no Supabase session at all — it's an anonymou
 
 This keeps the RLS policy set on `feedback_items` limited to "authenticated org member," full stop, and pushes the actually-tricky trust decision (is this widget submission legitimate?) into ordinary, testable server code instead of a harder-to-reason-about RLS policy.
 
+## Feedback ingestion: manual entry
+
+`/feedback/new` logs a single item: content, a channel, an optional customer, optional comma-separated tags. Channels and tags are find-or-create-by-name — `.upsert({org_id, name}, {onConflict: "org_id,name"})` against their unique constraint, so typing an existing name reuses it (via a datalist-suggested `<input>`, not a dropdown, so creating a new one needs no separate UI) and typing a new one creates it inline. Customers are matched by exact name if provided, otherwise the feedback item just has no customer link.
+
+**RLS gotcha worth remembering for CSV import and the widget too:** `.upsert()`'s conflict path is an `UPDATE` at the SQL level even when no column value actually changes, so it needs an `UPDATE` policy, not just `INSERT`. `channels` already had one; `tags` didn't (only `SELECT`/`INSERT`/`DELETE` from the core schema migration) and failed with `42501` the first time this pattern was tested against a real second call with the same name. Fixed in `20260705150000_tags_update_policy.sql`. Any future find-or-create-by-upsert against a table needs to be checked for this, not just assumed to work because `INSERT` succeeds on the first call.
+
+Every ingestion path logs `feedback.created` to `audit_log` via `log_audit_event`, same pattern as the settings actions.
+
 ## Auth & onboarding flow
 
 Sign-up collects only name, email, and password — no organization name at that step, to keep the form short. What happens next depends on whether the Supabase project requires email confirmation, which the app doesn't assume either way:

@@ -11,7 +11,7 @@ Done when: a user can sign up, create an org, import a batch of feedback via CSV
   - [ ] *Follow-up:* link the repo on vercel.com for CD (needs your Vercel account — see chat)
 - [x] **Database schema & RLS foundation** — Supabase schema: `organizations`, `profiles`, `org_members` (roles), `audit_log`, `channels`, `customers`, `feedback_items`; RLS policy on every table; `ARCHITECTURE.md` written alongside
 - [x] **Auth & onboarding** — sign up / sign in / sign out via Supabase Auth, session middleware, protected routes, auto-create org on first signup
-- [ ] **Organizations, teams & RBAC UI** — org settings page, invite/manage members, role assignment (admin/member/viewer), org switcher
+- [x] **Organizations, teams & RBAC UI** — org settings page, invite/manage members, role assignment (admin/member/viewer), org switcher
 - [ ] **Audit log** — record key actions server-side, admin-facing view
 - [ ] **Feedback ingestion: manual entry** — form + Zod validation + storage
 - [ ] **Feedback ingestion: CSV import** — upload, column mapping, preview, bulk insert, per-row error reporting

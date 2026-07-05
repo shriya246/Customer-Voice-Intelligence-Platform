@@ -17,17 +17,20 @@ Every tenant-owned table carries an `org_id` and is scoped by Postgres RLS polic
 
 RBAC is enforced through two `security definer` SQL functions — `is_org_member(org_id)` and `has_org_role(org_id, roles[])` — used inside every other table's policies. They run as the function owner rather than the calling role, which sidesteps a common RLS pitfall: policies on `org_members` that query `org_members` recursively. A third helper, `shares_org_with(user_id)`, backs the `profiles` visibility policy the same way.
 
-Role capabilities, as encoded in policy: `viewer` can read; `member` can read/write feedback, customers, channels, and tags; `admin` additionally manages members, roles, and deletions. See `supabase/migrations/20260704185500_core_schema.sql` for the exact policy set.
+Role capabilities, as encoded in policy: `viewer` can read; `member` can read/write feedback, customers, channels, and tags; `admin` additionally manages members, roles, and deletions. See `supabase/migrations/20260704185500_core_schema.sql` for the exact policy set. `/settings` is the UI for all of this: member list, role changes, removal, and invites, visible to any member but only editable by admins.
 
-**Known gap:** nothing currently stops the last remaining admin of an org from leaving or being demoted, which would leave the org unmanageable. Deferred — worth a trigger-level guard before this goes further than a portfolio build.
+A `prevent_last_admin_removal` trigger on `org_members` (added in `20260705120000_teams_and_invites.sql`) blocks any update or delete that would leave an org with zero active admins — closes what was originally a known gap in the core schema.
+
+A user can belong to more than one organization. `profiles.current_org_id` tracks which one is "active"; `getCurrentMembership()` reads it and falls back to whichever membership is found first if it's unset or stale (e.g. removed from that org). The header's org switcher (a plain `<select>` that submits on change) only renders when a user actually has more than one membership, rather than showing a single-item dropdown.
 
 ## Core schema
 
 | Table | Purpose |
 |---|---|
 | `organizations` | Tenant root |
-| `profiles` | App-level user profile, 1:1 with `auth.users` |
+| `profiles` | App-level user profile, 1:1 with `auth.users`, including `current_org_id` for the org switcher |
 | `org_members` | Membership + role (RBAC) |
+| `invites` | Pending/accepted/revoked email invitations, independent of `org_members` until accepted |
 | `audit_log` | Append-only record of consequential actions |
 | `channels` | Org-defined feedback sources (e.g. "Support Tickets", "App Store Reviews") |
 | `customers` | The end customer a piece of feedback came from, if known |
@@ -39,7 +42,11 @@ Sprint 2 adds an embedding column and clustering tables to `feedback_items`; del
 
 ## Invites
 
-There's no transactional email provider in this stack, and Supabase's own free-tier auth email is rate-limited to a handful of sends per hour — too low to build a real invite-by-email flow on top of without hitting the ceiling almost immediately. Sprint 1's invite flow is a shareable link instead: an admin generates an invite record (`org_members` row with `status = 'invited'`), gets a link, and sends it however they want (Slack, their own email client, etc.). Automated invite emails are a V1 candidate once a free-tier email provider is evaluated (see `ROADMAP.md`).
+There's no transactional email provider in this stack, and Supabase's own free-tier auth email is rate-limited to a handful of sends per hour — too low to build a real invite-by-email flow on top of without hitting the ceiling almost immediately. Sprint 1's invite flow is a shareable link instead, generated from `/settings` and sent however the admin wants (Slack, their own email client, etc.).
+
+Invites are their own `invites` table, not an `org_members` row: `org_members.user_id` is `not null` (it always represents a real member), so someone who hasn't signed up yet can't be represented there at all until they actually join. An invite is `{org_id, email, role, token, status}`; accepting one is a `security definer` RPC (`accept_invite`), not a direct client insert into `org_members`, because a brand-new member accepting their own invite isn't yet an admin of that org — the existing "admins can add members" policy would otherwise block it. `accept_invite` also checks that the accepting user's `auth.users.email` matches the invite's email (case-insensitive) before honoring it — a leaked link alone isn't enough, at least when email confirmation is enabled on the project (weaker, but still a real check, when it isn't). `get_invite_by_token` is a second, read-only `security definer` function granted to `anon` as well as `authenticated`, since an unauthenticated visitor needs to see who's inviting them to what, before they've signed up or logged in — RLS on `invites` itself only allows admins of the org to read/write it directly.
+
+`/login` and `/signup` both accept a `next` query param (validated by `src/lib/safe-redirect.ts` to same-app relative paths only, to avoid an open-redirect) so `/invite/[token]` can send an unauthenticated visitor to sign in or sign up and land back on the same invite afterward — including through email confirmation, by round-tripping `next` through `emailRedirectTo` on `/auth/callback`. Automated invite *emails* (as opposed to this link-based flow) are a V1 candidate once a free-tier email provider is evaluated (see `ROADMAP.md`).
 
 ## Public ingestion (the widget)
 

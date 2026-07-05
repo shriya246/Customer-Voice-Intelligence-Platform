@@ -3,10 +3,12 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { safeRedirectTarget } from "@/lib/safe-redirect";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email address"),
   password: z.string().min(1, "Password is required"),
+  next: z.string().optional(),
 });
 
 export type LoginState = { error?: string } | undefined;
@@ -18,6 +20,7 @@ export async function login(
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
+    next: formData.get("next") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -31,5 +34,5 @@ export async function login(
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  redirect(safeRedirectTarget(parsed.data.next));
 }

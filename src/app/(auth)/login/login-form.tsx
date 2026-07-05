@@ -4,11 +4,12 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { login } from "./actions";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, isPending] = useActionState(login, undefined);
 
   return (
     <form action={formAction} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label htmlFor="email" className="block text-sm font-medium">
           Email
@@ -49,7 +50,10 @@ export function LoginForm() {
       </button>
       <p className="text-center text-sm text-gray-500">
         No account?{" "}
-        <Link href="/signup" className="font-medium underline">
+        <Link
+          href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+          className="font-medium underline"
+        >
           Sign up
         </Link>
       </p>

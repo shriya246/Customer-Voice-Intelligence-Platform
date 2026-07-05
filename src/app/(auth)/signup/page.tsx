@@ -3,11 +3,17 @@ import { SignupForm } from "./signup-form";
 
 export const metadata: Metadata = { title: "Sign up — VoiceIQ Enterprise" };
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+
   return (
     <>
       <h1 className="mb-6 text-xl font-semibold">Create your account</h1>
-      <SignupForm />
+      <SignupForm next={next} />
     </>
   );
 }

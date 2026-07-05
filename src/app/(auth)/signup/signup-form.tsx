@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { signup } from "./actions";
 
-export function SignupForm() {
+export function SignupForm({ next }: { next?: string }) {
   const [state, formAction, isPending] = useActionState(signup, undefined);
 
   if (state?.message) {
@@ -17,6 +17,7 @@ export function SignupForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label htmlFor="fullName" className="block text-sm font-medium">
           Full name
@@ -71,7 +72,10 @@ export function SignupForm() {
       </button>
       <p className="text-center text-sm text-gray-500">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium underline">
+        <Link
+          href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
+          className="font-medium underline"
+        >
           Sign in
         </Link>
       </p>

@@ -6,6 +6,7 @@ import { getCurrentMembership } from "@/lib/org";
 import { computeOpportunityScore, getThemeStats } from "@/lib/scoring";
 import { getThemeTrend } from "@/lib/trends";
 import { generateExecutiveSummary } from "@/lib/groq";
+import { logError } from "@/lib/log-error";
 
 const TOP_THEMES_COUNT = 5;
 
@@ -90,6 +91,7 @@ export async function generateSummary(): Promise<GenerateSummaryState> {
       inProgressCount: inProgressCount ?? 0,
     });
   } catch (error) {
+    logError("executive_summary.generate", error, { orgId: membership.orgId });
     return { error: error instanceof Error ? error.message : "Summary generation failed" };
   }
 

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEmbedding } from "@/lib/embeddings";
 import { analyzeSentiment, generateThemeLabel } from "@/lib/groq";
+import { logError } from "@/lib/log-error";
 
 // Cosine distance below which a new item joins an existing theme rather
 // than starting a new one. Not empirically tuned yet -- there's no real
@@ -174,7 +175,7 @@ export async function tryProcessFeedbackItem(
     .eq("id", feedbackItemId)
     .single();
   if (currentError) {
-    console.error(`Could not read current state for feedback item ${feedbackItemId}:`, currentError);
+    logError("clustering.read_current_state", currentError, { feedbackItemId, orgId });
     return;
   }
 
@@ -184,7 +185,7 @@ export async function tryProcessFeedbackItem(
     try {
       themeId = await embedAndCluster(supabase, orgId, feedbackItemId, content, getEmbedding);
     } catch (error) {
-      console.error(`Embedding/clustering failed for feedback item ${feedbackItemId}:`, error);
+      logError("clustering.embed_and_cluster", error, { feedbackItemId, orgId });
     }
   }
 
@@ -201,7 +202,7 @@ export async function tryProcessFeedbackItem(
         .eq("id", feedbackItemId);
       if (error) throw new Error(error.message);
     } catch (error) {
-      console.error(`Sentiment analysis failed for feedback item ${feedbackItemId}:`, error);
+      logError("clustering.sentiment_analysis", error, { feedbackItemId, orgId });
     }
   }
 
@@ -209,7 +210,7 @@ export async function tryProcessFeedbackItem(
     try {
       await maybeLabelTheme(supabase, themeId);
     } catch (error) {
-      console.error(`Theme labeling failed for theme ${themeId}:`, error);
+      logError("clustering.label_theme", error, { themeId, feedbackItemId, orgId });
     }
   }
 }

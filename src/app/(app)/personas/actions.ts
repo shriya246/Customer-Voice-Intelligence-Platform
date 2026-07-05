@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
 import { generatePersonas } from "@/lib/groq";
+import { logError } from "@/lib/log-error";
 
 export type RegenerateState = { error: string } | { count: number } | undefined;
 
@@ -37,6 +38,7 @@ export async function regeneratePersonas(): Promise<RegenerateState> {
       themes.map((t) => ({ name: t.name as string, summary: t.summary as string | null }))
     );
   } catch (error) {
+    logError("personas.generate", error, { orgId: membership.orgId });
     return { error: error instanceof Error ? error.message : "Persona generation failed" };
   }
 

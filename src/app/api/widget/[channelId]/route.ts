@@ -4,6 +4,7 @@ import { parseJsonBody } from "@/lib/api/validate";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { tryProcessFeedbackItem } from "@/lib/clustering";
+import { logError } from "@/lib/log-error";
 
 const widgetSchema = z.object({
   content: z.string().trim().min(1, "Feedback content is required").max(5000),
@@ -79,6 +80,7 @@ export async function POST(
     .single();
 
   if (insertError) {
+    logError("widget.insert_feedback_item", insertError, { channelId, orgId: channel.org_id });
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 }

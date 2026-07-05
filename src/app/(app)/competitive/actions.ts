@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
 import { summarizeCompetitorMentions } from "@/lib/groq";
+import { logError } from "@/lib/log-error";
 
 const createSchema = z.object({
   competitorName: z.string().trim().min(1, "Competitor name is required").max(100),
@@ -99,6 +100,7 @@ export async function summarizeCompetitor(noteId: string): Promise<SummarizeStat
       mentions.map((m) => m.content as string)
     );
   } catch (error) {
+    logError("competitive.summarize_mentions", error, { orgId: membership.orgId, noteId });
     return { error: error instanceof Error ? error.message : "Summarization failed" };
   }
 

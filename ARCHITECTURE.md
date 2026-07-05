@@ -229,6 +229,10 @@ Found the same class of bug as the `tags` UPDATE-policy gap above, in two join-t
 
 The widget endpoint (`api/widget/[channelId]`) is the only unauthenticated, publicly-reachable write surface in the app, and it's the only place `checkRateLimit` is called — correctly, before any database work, keyed on `x-forwarded-for` (set by the platform's own edge proxy, not client-controlled). The other bulk-write surface, CSV import, requires authentication (org membership, viewers blocked) and already caps input at 2000 rows via Zod, so it doesn't need IP rate limiting on top. No gap found; the only open item is the one already tracked in `BACKLOG.md` — Upstash isn't connected yet, so the limiter fails open with a console warning until that credential exists.
 
+## Hardening pass: structured error logging
+
+No paid error-tracking service (this project's zero-dollar constraint, and no account exists for one) — instead, `src/lib/log-error.ts` emits one structured JSON line per error (`scope`, `message`, `stack`, arbitrary context, `timestamp`) to `console.error`, which Vercel's own log viewer already captures and lets filter by field. Retrofit into every catch block that was previously silent past its returned client-facing message or an ad hoc string-concatenated `console.error`: the three Groq-calling actions (`personas.generate`, `competitive.summarize_mentions`, `executive_summary.generate`) now log server-side before returning the user-facing error, the four failure points in `tryProcessFeedbackItem` (`clustering.read_current_state`, `clustering.embed_and_cluster`, `clustering.sentiment_analysis`, `clustering.label_theme`) use consistent structured calls instead of one-off template strings, and the widget route's previously-silent insert failure (`widget.insert_feedback_item`) now logs before returning its generic 500.
+
 ## Free-tier ceilings to watch
 
 - **Supabase free tier:** 500MB database, 1GB file storage, 5GB egress/month, project pauses after 7 days with no API requests (auto-resumes on next request, but the pause itself is worth knowing about for a portfolio demo that might sit idle).

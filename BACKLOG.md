@@ -7,7 +7,8 @@ Living, sprint-tagged. Checked off as each item ships (coded, tested, committed,
 Done when: a user can sign up, create an org, import a batch of feedback via CSV or the widget, and browse/filter it.
 
 - [x] **Project scaffolding** — Next.js (App Router) + TypeScript + Tailwind, ESLint, base repo docs
-- [ ] **CI/CD + security/config baseline** — Vercel deploy pipeline, security headers, `.env.example`, Zod as the validation baseline, rate-limit scaffold wired for Upstash
+- [x] **CI + security/config baseline** — GitHub Actions CI (lint + build on every push/PR), security headers, `.env.example`, Zod validation baseline, rate-limit scaffold wired for Upstash
+  - [ ] *Follow-up:* link the repo on vercel.com for CD (needs your Vercel account — see chat)
 - [ ] **Database schema & RLS foundation** — Supabase schema: `organizations`, `profiles`, `org_members` (roles), `audit_log`, `channels`, `customers`, `feedback_items`; RLS policy on every table; `ARCHITECTURE.md` written alongside
 - [ ] **Auth & onboarding** — sign up / sign in / sign out via Supabase Auth, session middleware, protected routes, auto-create org on first signup
 - [ ] **Organizations, teams & RBAC UI** — org settings page, invite/manage members, role assignment (admin/member/viewer), org switcher

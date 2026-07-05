@@ -219,6 +219,12 @@ Three distinct clients, per Supabase's SSR guidance for the App Router:
 - Rate limiting via Upstash (`src/lib/rate-limit.ts`), fails open with a warning when Upstash isn't configured yet (true right now — no account created). Must be confirmed fail-closed-or-blocking before the public widget carries real traffic.
 - Secrets (Supabase service role, Groq, Upstash, HF tokens) live only in environment variables, never in code or client bundles; `.env.example` documents every var without values.
 
+## Hardening pass: RLS audit
+
+Reviewed every RLS policy across all 15 migrations directly against their source (not by introspecting the live database — the migrations are the intended access model, authored one at a time, so reading them is more reliable than reverse-engineering intent from `pg_policies`). Confirmed RLS is enabled on all 16 tenant tables and every policy's role/action split matches the intended admin/member/viewer model.
+
+Found the same class of bug as the `tags` UPDATE-policy gap above, in two join-table INSERT policies: `feedback_item_tags` and `persona_themes` both checked that the caller had the right role on one side of the link (the feedback item's org, the persona's org) but never verified the *other* foreign key (`tag_id`, `theme_id`) actually belonged to that same org. The app's own code never constructs a cross-org pair — tags/themes are always looked up or created within the caller's own org first — but RLS, not application code, is the real boundary: an authenticated member could call PostgREST directly (bypassing the Next.js server actions entirely) with a foreign org's tag/theme UUID and have it accepted. Fixed in `20260705250000_cross_org_link_policies.sql` by joining across both tables in the `with check` clause. Verified live: a cross-org attempt on both tables now fails with `42501`, while same-org linking still succeeds.
+
 ## Free-tier ceilings to watch
 
 - **Supabase free tier:** 500MB database, 1GB file storage, 5GB egress/month, project pauses after 7 days with no API requests (auto-resumes on next request, but the pause itself is worth knowing about for a portfolio demo that might sit idle).

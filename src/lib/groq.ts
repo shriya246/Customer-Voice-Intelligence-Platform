@@ -176,3 +176,60 @@ export async function summarizeCompetitorMentions(
 
   return competitorSummarySchema.parse(JSON.parse(raw)).summary;
 }
+
+export type ExecutiveSummaryInput = {
+  totalFeedbackThisPeriod: number;
+  totalFeedbackPriorPeriod: number;
+  topThemes: {
+    name: string;
+    opportunityScore: number;
+    reach: number;
+    trend: "rising" | "falling" | "flat";
+  }[];
+  shippedCount: number;
+  inProgressCount: number;
+};
+
+const execSummarySchema = z.object({ summary: z.string().min(1).max(2000) });
+
+/**
+ * Narrative summary of "what customers are asking for this month and why
+ * it matters" -- takes already-computed structured data (not raw feedback
+ * text) so the model's job is narration and framing, not re-deriving
+ * numbers it could get wrong; every number in the output should be
+ * traceable to something the caller already computed deterministically.
+ */
+export async function generateExecutiveSummary(input: ExecutiveSummaryInput): Promise<string> {
+  const themesText = input.topThemes
+    .map(
+      (t, i) =>
+        `${i + 1}. "${t.name}" — opportunity score ${t.opportunityScore}, reach ${t.reach}, trend: ${t.trend}`
+    )
+    .join("\n");
+
+  const completion = await getClient().chat.completions.create({
+    model: MODEL,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content:
+          "You write a short executive narrative summarizing what customers are asking for and why it matters to the business, for a CPO/VP Product audience who won't read raw tickets. " +
+          "Use only the structured data given -- do not invent numbers, themes, or trends not present in it. " +
+          'Respond only with JSON matching exactly this shape: {"summary": 3-5 sentences, plain language, no bullet points, written as prose a CPO would read in a board deck}.',
+      },
+      {
+        role: "user",
+        content:
+          `Feedback volume: ${input.totalFeedbackThisPeriod} items this period vs ${input.totalFeedbackPriorPeriod} the prior period.\n` +
+          `Top opportunities:\n${themesText || "(none yet)"}\n` +
+          `Roadmap: ${input.shippedCount} shipped, ${input.inProgressCount} in progress this period.`,
+      },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new Error("Groq returned no content for executive summary");
+
+  return execSummarySchema.parse(JSON.parse(raw)).summary;
+}

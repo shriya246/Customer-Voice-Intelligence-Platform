@@ -166,6 +166,14 @@ Same graceful-degradation posture as the rest of Sprint 2/3's AI features: no Gr
 
 **Verified against live data (mention search + the surrounding CRUD/RLS, not the Groq summarization call itself, which needs credentials that don't exist yet):** inserted feedback items, some mentioning a test competitor name and some not, confirmed the `ilike` search matched exactly the relevant ones; confirmed `ai_summary` persists correctly on update, independent of the manual `note` field; confirmed a viewer can read notes but is blocked from creating one.
 
+## Sprint 3: executive summary generator
+
+`executive_summaries` (org_id, content, generated_by, created_at) — every generation is a new row, not an overwritten "current summary," since comparing this period's narrative to last period's is a real use case (`KPI_FRAMEWORK.md`'s "executive summary views per month" metric implies exactly this history, not a single live snapshot with no past).
+
+**The model narrates; it doesn't compute.** Every number handed to `generateExecutiveSummary()` — feedback volume this period vs. the prior period, each top theme's opportunity score/reach/trend, roadmap shipped/in-progress counts — is already computed deterministically by the same functions the rest of the app uses (`getThemeStats`, `computeOpportunityScore`, `getThemeTrend`), not left for the model to derive from raw text. The prompt explicitly tells it not to invent numbers or themes beyond what's given. This matters more here than in the sentiment/labeling prompts: an executive reading this expects the figures to be real, and "the model estimated it from vibes" would undermine the entire "evidence-based, not anecdote-based" pitch the product makes.
+
+**Verified against live data (the period-window queries, the roadmap counts, and the RLS/CRUD, not the actual Groq narration call, which needs credentials that don't exist yet):** inserted feedback at controlled offsets (3 items within the last 30 days, 1 item 45 days ago) and confirmed the recent/prior period counts matched exactly; confirmed shipped/in-progress roadmap counts; confirmed `get_theme_stats`/`get_theme_trend` — already independently verified in their own sections — compose correctly together for the top-themes input; confirmed a stored summary persists and reads back, and that a viewer can read summaries but is blocked from generating one.
+
 ## Auth & onboarding flow
 
 Sign-up collects only name, email, and password — no organization name at that step, to keep the form short. What happens next depends on whether the Supabase project requires email confirmation, which the app doesn't assume either way:

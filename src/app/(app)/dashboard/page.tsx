@@ -152,6 +152,12 @@ export default async function DashboardPage({
           >
             Competitive
           </Link>
+          <Link
+            href="/executive-summary"
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
+          >
+            Exec Summary
+          </Link>
           {membership.role !== "viewer" && (
             <>
               <Link

@@ -1,13 +1,13 @@
 # Roadmap
 
-Last updated: Sprint 1.
+Last updated: end of Sprint 1.
 
 ## MVP (Sprints 1–3)
 
 The three sprints that take this from nothing to a demoable end-to-end loop.
 
-- **Sprint 1 — Foundation & Feedback Ingestion:** multi-tenant auth/org/RBAC, core schema, three ingestion paths (manual, CSV, widget), filterable feedback list. *In progress.*
-- **Sprint 2 — AI Clustering, Sentiment, and Opportunity Scoring:** embedding + clustering pipeline, sentiment/pain-point extraction, RICE-based opportunity scoring, trend view.
+- **Sprint 1 — Foundation & Feedback Ingestion:** multi-tenant auth/org/RBAC, core schema, three ingestion paths (manual, CSV, widget), filterable feedback list. *Done.* A user can sign up, create an org, invite teammates, import feedback via CSV or the embeddable widget (or log it manually), and browse/filter the result.
+- **Sprint 2 — AI Clustering, Sentiment, and Opportunity Scoring:** embedding + clustering pipeline, sentiment/pain-point extraction, RICE-based opportunity scoring, trend view. *In progress.*
 - **Sprint 3 — Personas, Roadmap Integration, Executive Layer:** data-backed personas, roadmap tracker linked to themes, competitive insight notes, auto-drafted executive summary, security/test hardening pass.
 
 Full detail on each sprint's scope lives in [PROJECT_PLAN.md](./PROJECT_PLAN.md) and [PRD.md](./PRD.md).

@@ -17,7 +17,7 @@ Done when: a user can sign up, create an org, import a batch of feedback via CSV
 - [x] **Feedback ingestion: CSV import** — upload, column mapping, preview, bulk insert, per-row error reporting
 - [x] **Feedback ingestion: public widget embed** — embeddable snippet + public rate-limited API endpoint writing into a channel
   - [ ] *Follow-up:* Upstash not connected yet — rate limiting fails open with a console warning until credentials exist (see chat)
-- [ ] **Feedback list/table view** — filter by channel, date range, tag; search; pagination
+- [x] **Feedback list/table view** — filter by channel, date range, tag; search; pagination
 
 ## Sprint 2 — AI Clustering, Sentiment, and Opportunity Scoring
 

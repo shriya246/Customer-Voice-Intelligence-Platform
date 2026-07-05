@@ -78,6 +78,14 @@ Deliberately **one channel for the entire import, not a per-row column**: a real
 
 Bulk-insert strategy: unique channel (one row) and all unique tag names across the whole file are upserted once, in a single batched call each (`.upsert([...])` with an array, not one call per row) — confirmed this correctly dedupes rather than creating N rows for the same repeated tag name across the file. Customers are resolved with one `select ... in (names)` for existing matches, then one batched insert for whatever's missing. Only the actual `feedback_items` + `feedback_item_tags` inserts happen one row at a time, in a loop — deliberately, not a missed optimization: this is what makes per-row error reporting possible (a bad row doesn't abort the batch, and the caller gets back exactly which row numbers failed and why), and at the row counts a CSV import realistically involves here, the per-row round trip cost is a non-issue. Capped at 2000 rows per import as a sanity limit, not a scalability tuned number.
 
+## Feedback list view
+
+`/dashboard` is the list view — filters (search, channel, tag, date range) are plain `<form method="get">` inputs, not client-state/JS, so filtering is just a normal navigation with query params (`?channel=...&tag=...&q=...&page=...`), bookmarkable and shareable, and works without JavaScript. Pagination is offset-based (`page` param, 20 rows/page) rather than cursor-based — simpler, and entirely adequate at the row counts this product deals with.
+
+Tag filtering is a separate query, not an embedded-resource inner join: filtering `feedback_items` by tag via `.select("*, feedback_item_tags!inner(tag_id)").eq("feedback_item_tags.tag_id", x)` would work for *restricting which rows come back*, but the same embed used for *displaying* every tag on each row would then only show the one tag being filtered on, not the item's other tags — PostgREST's embedded-resource filtering scopes the embed itself, not just row inclusion. Instead: a first query resolves which `feedback_item_id`s have the target tag (`feedback_item_tags` where `tag_id = x`), then `.in("id", thoseIds)` on the main query, which keeps the *display* join (`feedback_item_tags(tags(name))`) unfiltered and complete. A tag with zero matches resolves to a single-element array containing a nil UUID, forcing the main query to correctly return zero rows rather than needing a separate no-results code path.
+
+Sprint 1's "done when" criterion — sign up, create an org, import feedback via CSV or the widget, browse/filter it — is met as of this feature.
+
 ## Auth & onboarding flow
 
 Sign-up collects only name, email, and password — no organization name at that step, to keep the form short. What happens next depends on whether the Supabase project requires email confirmation, which the app doesn't assume either way:

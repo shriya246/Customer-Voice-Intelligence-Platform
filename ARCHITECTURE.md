@@ -13,7 +13,7 @@ Every tenant-owned table carries an `org_id` and is scoped by Postgres RLS polic
 - **`organizations`** — one row per tenant. No direct insert policy exists; the only way to create one is the `create_organization(name, slug)` RPC, which atomically creates the org and adds the caller as its `admin` in the same transaction. This avoids a class of bug where a client could create an orphaned org with no admin member.
 - **`profiles`** — mirrors `auth.users` for app-level profile data (name, avatar), since `auth.users` itself isn't extensible. Populated automatically by an `on_auth_user_created` trigger.
 - **`org_members`** — the membership + role table. Role is one of `admin`, `member`, `viewer`. Status is `active` or `invited` (see "Invites" below). This table *is* what "teams" means in this product — there's no separate sub-team grouping within an org at this stage.
-- **`audit_log`** — every consequential action, keyed by org. Deliberately has no client-facing insert policy at all; every write happens from trusted server code using the service-role key (see "Public ingestion").
+- **`audit_log`** — every consequential action, keyed by org. No client-facing insert *policy* at all — every write goes through `log_audit_event()` (a `security definer` RPC) or is inserted directly by another `security definer` function in the same transaction as the action it's recording (see "Audit log" below).
 
 RBAC is enforced through two `security definer` SQL functions — `is_org_member(org_id)` and `has_org_role(org_id, roles[])` — used inside every other table's policies. They run as the function owner rather than the calling role, which sidesteps a common RLS pitfall: policies on `org_members` that query `org_members` recursively. A third helper, `shares_org_with(user_id)`, backs the `profiles` visibility policy the same way.
 
@@ -75,13 +75,24 @@ Routing every authenticated-but-org-less user through the same `/onboarding` ste
 
 Verified end to end against a live project before this shipped: sign-up (via the admin API to avoid the email rate limit below), the `handle_new_user` trigger firing, `create_organization`, and RLS correctly isolating two separate orgs from each other (blocked reads return `null`, blocked writes return Postgres `42501`) — see `PROGRESS_LOG.md` for the full verification script and output.
 
+## Audit log
+
+Every consequential action gets a row in `audit_log`: who (`actor_user_id`), what (`action`, a short dotted string like `member.role_changed`), on what (`target_type`/`target_id`), and any extra context (`metadata`, jsonb). Two ways it gets written, both `security definer`, neither a direct client insert:
+
+- **`create_organization` and `accept_invite`** insert directly, in the same transaction as the action they're recording — they're already `security definer` for the action itself, so there's no reason to round-trip through a second function call.
+- **Everything else** (`invite.created`, `invite.revoked`, `member.role_changed`, `member.removed`) goes through `log_audit_event(org_id, action, target_type, target_id, metadata)`, called from the relevant Server Action right after the mutation succeeds. `actor_user_id` always comes from `auth.uid()` inside the function, never a client-supplied field, so it can't be spoofed; it also re-checks `is_org_member(org_id)` before writing, so a caller can't log a fabricated event against an org they don't belong to.
+
+Originally planned to route these writes through the service-role admin client (like the widget), but `security definer` RPCs turned out to be the better fit: they keep `actor_user_id` tied to a real, verified session instead of something the server code would otherwise have to thread through manually, and they let ordinary authenticated users trigger a write without ever touching a service-role key outside the one route that genuinely needs it (the anonymous widget).
+
+`/settings/audit-log` is the admin-only view (RLS already restricts `audit_log` SELECT to admins; the page also redirects non-admins as a clearer UX than a silently-empty table). Feedback CRUD isn't logged yet since ingestion doesn't exist yet — added to this same table as those backlog items ship, not a separate mechanism.
+
 ## Supabase client architecture (Next.js App Router)
 
 Three distinct clients, per Supabase's SSR guidance for the App Router:
 
 - **`src/lib/supabase/client.ts`** — browser client (`createBrowserClient`). Used in Client Components. Respects RLS as the signed-in user.
 - **`src/lib/supabase/server.ts`** — server client (`createServerClient`), built fresh per request from `next/headers` cookies. Used in Server Components, Server Actions, and Route Handlers. Also respects RLS.
-- **`src/lib/supabase/admin.ts`** — service-role client, guarded with the `server-only` package so an accidental import into client code fails the build instead of leaking the key. Bypasses RLS entirely; only used where the route itself does the authorization (the widget endpoint, audit-log writes).
+- **`src/lib/supabase/admin.ts`** — service-role client, guarded with the `server-only` package so an accidental import into client code fails the build instead of leaking the key. Bypasses RLS entirely; only used where the route itself does the authorization (the widget endpoint — audit-log writes turned out not to need this, see "Audit log" below).
 - **`src/proxy.ts`** — refreshes the session cookie on every request. Server Components can't write cookies, so without this, expired access tokens would never get refreshed. (Named `proxy.ts`, not `middleware.ts` — Next.js 16 renamed the convention; the old name still works but logs a deprecation warning.)
 
 ## Security posture

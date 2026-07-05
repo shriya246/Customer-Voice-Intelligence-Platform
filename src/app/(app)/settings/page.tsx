@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
 import { MemberRow } from "./member-row";
@@ -52,9 +53,19 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">{membership.orgName}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Settings</h1>
+          <p className="mt-1 text-sm text-gray-500">{membership.orgName}</p>
+        </div>
+        {isAdmin && (
+          <Link
+            href="/settings/audit-log"
+            className="text-sm text-gray-500 underline hover:text-gray-900 dark:hover:text-gray-100"
+          >
+            View audit log
+          </Link>
+        )}
       </div>
 
       <section>
@@ -108,6 +119,7 @@ export default async function SettingsPage() {
                     </span>
                     <form action={revokeInvite}>
                       <input type="hidden" name="inviteId" value={invite.id} />
+                      <input type="hidden" name="orgId" value={membership.orgId} />
                       <button type="submit" className="text-red-600 hover:underline">
                         Revoke
                       </button>

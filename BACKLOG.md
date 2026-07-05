@@ -12,7 +12,7 @@ Done when: a user can sign up, create an org, import a batch of feedback via CSV
 - [x] **Database schema & RLS foundation** — Supabase schema: `organizations`, `profiles`, `org_members` (roles), `audit_log`, `channels`, `customers`, `feedback_items`; RLS policy on every table; `ARCHITECTURE.md` written alongside
 - [x] **Auth & onboarding** — sign up / sign in / sign out via Supabase Auth, session middleware, protected routes, auto-create org on first signup
 - [x] **Organizations, teams & RBAC UI** — org settings page, invite/manage members, role assignment (admin/member/viewer), org switcher
-- [ ] **Audit log** — record key actions server-side, admin-facing view
+- [x] **Audit log** — record key actions server-side, admin-facing view
 - [ ] **Feedback ingestion: manual entry** — form + Zod validation + storage
 - [ ] **Feedback ingestion: CSV import** — upload, column mapping, preview, bulk insert, per-row error reporting
 - [ ] **Feedback ingestion: public widget embed** — embeddable snippet + public rate-limited API endpoint writing into a channel

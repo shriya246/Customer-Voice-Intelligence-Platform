@@ -37,12 +37,20 @@ export async function createInvite(
       email: parsed.data.email,
       role: parsed.data.role,
     })
-    .select("token")
+    .select("id, token")
     .single();
 
   if (error) {
     return { error: error.message };
   }
+
+  await supabase.rpc("log_audit_event", {
+    p_org_id: parsed.data.orgId,
+    p_action: "invite.created",
+    p_target_type: "invite",
+    p_target_id: data.id,
+    p_metadata: { email: parsed.data.email, role: parsed.data.role },
+  });
 
   revalidatePath("/settings");
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -51,10 +59,19 @@ export async function createInvite(
 
 export async function revokeInvite(formData: FormData) {
   const inviteId = formData.get("inviteId");
-  if (typeof inviteId !== "string") return;
+  const orgId = formData.get("orgId");
+  if (typeof inviteId !== "string" || typeof orgId !== "string") return;
 
   const supabase = await createClient();
   await supabase.from("invites").update({ status: "revoked" }).eq("id", inviteId);
+
+  await supabase.rpc("log_audit_event", {
+    p_org_id: orgId,
+    p_action: "invite.revoked",
+    p_target_type: "invite",
+    p_target_id: inviteId,
+  });
+
   revalidatePath("/settings");
 }
 
@@ -81,6 +98,14 @@ export async function updateMemberRole(formData: FormData) {
   // reverts on the next render with no explanation.
   if (error) throw new Error(error.message);
 
+  await supabase.rpc("log_audit_event", {
+    p_org_id: orgId,
+    p_action: "member.role_changed",
+    p_target_type: "org_member",
+    p_target_id: userId,
+    p_metadata: { role },
+  });
+
   revalidatePath("/settings");
 }
 
@@ -97,6 +122,13 @@ export async function removeMember(formData: FormData) {
     .eq("user_id", userId);
 
   if (error) throw new Error(error.message);
+
+  await supabase.rpc("log_audit_event", {
+    p_org_id: orgId,
+    p_action: "member.removed",
+    p_target_type: "org_member",
+    p_target_id: userId,
+  });
 
   revalidatePath("/settings");
 }

@@ -26,11 +26,13 @@ Done when: imported feedback is auto-clustered into labeled themes with sentimen
 - [x] Embedding pipeline (pgvector) for feedback items
   - [ ] *Follow-up:* Hugging Face token not connected yet — embedding fails open (item stays unclustered) until credentials exist (see chat)
 - [x] Clustering job grouping feedback into themes
-- [ ] AI-generated theme labels + summaries (Groq)
-- [ ] Sentiment tagging + pain-point extraction per feedback item (Groq)
+- [x] AI-generated theme labels + summaries (Groq)
+- [x] Sentiment tagging + pain-point extraction per feedback item (Groq)
+  - [ ] *Follow-up:* Groq key not connected yet — sentiment/labeling fail open (item stays unanalyzed) until credentials exist (see chat)
 - [ ] Opportunity scoring engine (RICE-based, per `RICE_PRIORITIZATION.md`)
 - [ ] Trend view — themes over time, rising/falling
-- [ ] PM docs: `OPPORTUNITY_FRAMEWORK.md`, `RICE_PRIORITIZATION.md`, `EXECUTIVE_SUMMARY.md` update, `ARCHITECTURE.md` pipeline write-up
+- [x] PM docs: `OPPORTUNITY_FRAMEWORK.md`, `RICE_PRIORITIZATION.md`, `ARCHITECTURE.md` pipeline write-up
+  - [ ] *Remaining:* `EXECUTIVE_SUMMARY.md` update (done at Sprint 2's end, per its own convention)
 
 ## Sprint 3 — Personas, Roadmap Integration, Executive Layer
 

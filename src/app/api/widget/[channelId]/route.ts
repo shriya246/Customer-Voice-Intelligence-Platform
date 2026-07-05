@@ -3,7 +3,7 @@ import { z } from "zod";
 import { parseJsonBody } from "@/lib/api/validate";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { tryEmbedAndCluster } from "@/lib/clustering";
+import { tryProcessFeedbackItem } from "@/lib/clustering";
 
 const widgetSchema = z.object({
   content: z.string().trim().min(1, "Feedback content is required").max(5000),
@@ -99,7 +99,7 @@ export async function POST(
     metadata: { source: "widget" },
   });
 
-  await tryEmbedAndCluster(supabase, channel.org_id, feedbackItem.id, parsed.data.content);
+  await tryProcessFeedbackItem(supabase, channel.org_id, feedbackItem.id, parsed.data.content);
 
   return NextResponse.json({ ok: true });
 }

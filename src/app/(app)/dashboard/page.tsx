@@ -14,10 +14,19 @@ type FeedbackRow = {
   content: string;
   source: string;
   created_at: string;
+  sentiment: string | null;
   channels: { name: string } | null;
   customers: { name: string | null } | null;
   feedback_item_tags: { tags: { name: string } | null }[];
   themes: { name: string | null } | null;
+};
+
+const SENTIMENT_STYLES: Record<string, string> = {
+  very_negative: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+  negative: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+  neutral: "bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-gray-300",
+  positive: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  very_positive: "bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200",
 };
 
 type SearchParams = {
@@ -60,12 +69,12 @@ export default async function DashboardPage({
     .from("feedback_items")
     .select("*", { count: "exact", head: true })
     .eq("org_id", membership.orgId)
-    .is("theme_id", null);
+    .or("theme_id.is.null,sentiment.is.null");
 
   let query = supabase
     .from("feedback_items")
     .select(
-      "id, content, source, created_at, channels(name), customers(name), feedback_item_tags(tags(name)), themes(name)",
+      "id, content, source, created_at, sentiment, channels(name), customers(name), feedback_item_tags(tags(name)), themes(name)",
       { count: "exact" }
     )
     .eq("org_id", membership.orgId);
@@ -228,6 +237,7 @@ export default async function DashboardPage({
             <thead>
               <tr className="border-b border-gray-200 text-gray-500 dark:border-neutral-800">
                 <th className="p-3 font-normal">Content</th>
+                <th className="p-3 font-normal">Sentiment</th>
                 <th className="p-3 font-normal">Theme</th>
                 <th className="p-3 font-normal">Channel</th>
                 <th className="p-3 font-normal">Customer</th>
@@ -241,6 +251,17 @@ export default async function DashboardPage({
                 <tr key={item.id} className="border-b border-gray-100 dark:border-neutral-800">
                   <td className="max-w-sm p-3">
                     <span className="line-clamp-2">{item.content}</span>
+                  </td>
+                  <td className="p-3 whitespace-nowrap">
+                    {item.sentiment ? (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${SENTIMENT_STYLES[item.sentiment] ?? ""}`}
+                      >
+                        {item.sentiment.replace("_", " ")}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="p-3 whitespace-nowrap">
                     {item.themes?.name ?? (

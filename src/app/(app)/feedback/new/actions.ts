@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
-import { tryEmbedAndCluster } from "@/lib/clustering";
+import { tryProcessFeedbackItem } from "@/lib/clustering";
 
 const feedbackSchema = z.object({
   content: z.string().trim().min(1, "Feedback content is required").max(10_000),
@@ -122,7 +122,7 @@ export async function createFeedback(
     p_metadata: { source: "manual", channel: channelName },
   });
 
-  await tryEmbedAndCluster(supabase, membership.orgId, feedbackItem.id, content);
+  await tryProcessFeedbackItem(supabase, membership.orgId, feedbackItem.id, content);
 
   redirect("/dashboard");
 }

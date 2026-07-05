@@ -90,3 +90,52 @@ export async function generateThemeLabel(
 
   return themeLabelSchema.parse(JSON.parse(raw));
 }
+
+const personaSchema = z.object({
+  name: z.string().min(1).max(80),
+  description: z.string().min(1).max(600),
+  based_on_themes: z.array(z.string()),
+});
+
+const personasResponseSchema = z.object({
+  personas: z.array(personaSchema).min(1).max(5),
+});
+
+export type PersonaResult = z.infer<typeof personaSchema>;
+
+/**
+ * Synthesizes data-backed personas from real clustered themes -- explicitly
+ * told to reference themes by their exact given names, not invent new
+ * theme names, so the caller can reliably map `based_on_themes` back to
+ * real theme ids afterward (traceability: every persona has to point at
+ * data that actually exists, not a plausible-sounding fabrication).
+ */
+export async function generatePersonas(
+  themes: { name: string; summary: string | null }[]
+): Promise<PersonaResult[]> {
+  const themeList = themes
+    .map((t, i) => `${i + 1}. ${t.name}${t.summary ? ` — ${t.summary}` : ""}`)
+    .join("\n");
+
+  const completion = await getClient().chat.completions.create({
+    model: MODEL,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content:
+          "You synthesize customer personas from real, already-clustered feedback themes -- these are data-backed personas, not hypothetical ones, so every persona must be grounded in the actual themes given. " +
+          'Respond only with JSON matching exactly this shape: {"personas": [{"name": a short persona archetype name under 6 words, ' +
+          '"description": 2-3 sentences describing who this customer is, what they care about, and why, grounded in the themes below, ' +
+          '"based_on_themes": an array of the exact theme name strings from the list below that this persona is drawn from -- copy them verbatim, do not invent new ones}]}. ' +
+          "Produce 2 to 4 personas, each grounded in at least one theme. Do not reference any theme name not in the list provided.",
+      },
+      { role: "user", content: `Themes:\n${themeList}` },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new Error("Groq returned no content for persona generation");
+
+  return personasResponseSchema.parse(JSON.parse(raw)).personas;
+}

@@ -148,6 +148,16 @@ The actual RICE formula lives in `src/lib/scoring.ts`, in application code, not 
 
 `/roadmap` is a five-column board (one per status) rather than a flat list with a status filter — a PM scanning "what's shipped vs. what's still under review" benefits from seeing all five states at once, which a single filtered list would hide behind repeated filter-switching.
 
+## Sprint 3: AI-generated personas
+
+`personas` + `persona_themes` (a join table, not a single FK, since one persona is typically grounded in more than one theme): personas synthesized from real clustered feedback themes, in contrast to `PERSONAS.md` (VoiceIQ's own hypothetical target users) — these describe a *VoiceIQ customer's own end customers*, and the entire point is that they're data-backed rather than invented, so every persona has to trace back to real themes, not just read as plausible.
+
+**The generation prompt explicitly requires the model to copy theme names verbatim** rather than freely describing them, specifically so `based_on_themes` can be reliably mapped back to real `theme_id`s afterward. This doesn't fully solve LLM unreliability, so the mapping code treats a theme name that doesn't match anything real as an expected, non-fatal case: it's dropped silently rather than erroring or creating a broken foreign-key reference, and the persona itself still gets created (with whichever real themes it did correctly reference). Verified this exact path with a synthetic "hallucinated theme name" input, confirming it's filtered out cleanly rather than crashing.
+
+**Regeneration replaces the whole persona set, not an incremental merge.** "Regenerate personas" is framed to the user as producing a fresh snapshot from current data; existing personas are deleted only *after* generation succeeds, never before — verified this ordering directly (simulated a failed generation, confirmed a pre-existing persona was still present afterward) so a Groq failure can't wipe out a previously-good persona set.
+
+Same graceful-degradation posture as the rest of Sprint 2/3's AI features: no Groq key exists yet, so the generation call itself is the one part of this feature not yet verified against real output — everything around it (schema, RLS, the replace-on-success ordering, the theme-name-mapping defensive logic) has been.
+
 ## Auth & onboarding flow
 
 Sign-up collects only name, email, and password — no organization name at that step, to keep the form short. What happens next depends on whether the Supabase project requires email confirmation, which the app doesn't assume either way:

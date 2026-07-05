@@ -37,7 +37,8 @@ Done when: imported feedback is auto-clustered into labeled themes with sentimen
 
 Done when: the full loop (feedback in → clustered/scored → persona/roadmap/executive output) is demoable end to end and deployed.
 
-- [ ] AI-generated, data-backed personas from clustered feedback
+- [x] AI-generated, data-backed personas from clustered feedback
+  - [ ] *Follow-up:* Groq key not connected yet — generation call itself unverified until credentials exist (see chat)
 - [x] Feature request tracker linked to themes, with roadmap status
 - [ ] Competitive insight notes field (manual + AI-assisted summarization)
 - [ ] Executive summary generator (auto-drafted narrative)

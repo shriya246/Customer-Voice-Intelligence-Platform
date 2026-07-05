@@ -31,7 +31,7 @@ function getClient(): InferenceClient {
  *   - a single-element array wrapping the pooled vector, e.g. [[...]]
  *   - a multi-element array of per-token vectors, needing mean-pooling here
  */
-function extractEmbedding(output: unknown): number[] {
+export function extractEmbedding(output: unknown): number[] {
   if (!Array.isArray(output) || output.length === 0) {
     throw new Error("Unexpected embedding response: empty or not an array");
   }

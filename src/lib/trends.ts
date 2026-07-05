@@ -61,7 +61,7 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
  * date ranges -- confirmed this was a real bug, not a hypothetical one, by
  * testing with intentionally gappy data before relying on this function.
  */
-function sumInWeekRange(weeks: WeeklyPoint[], weeksAgoStart: number, weeksAgoEnd: number): number {
+export function sumInWeekRange(weeks: WeeklyPoint[], weeksAgoStart: number, weeksAgoEnd: number): number {
   const now = Date.now();
   const rangeStart = now - weeksAgoEnd * MS_PER_WEEK;
   const rangeEnd = now - weeksAgoStart * MS_PER_WEEK;

@@ -19,7 +19,7 @@ const LABEL_SAMPLE_SIZE = 10;
  * or its text representation ("[0.1,0.2,...]") depending on context --
  * parses defensively rather than assuming one or the other.
  */
-function parseVector(value: unknown): number[] {
+export function parseVector(value: unknown): number[] {
   if (Array.isArray(value)) return value as number[];
   if (typeof value === "string") {
     return JSON.parse(value) as number[];

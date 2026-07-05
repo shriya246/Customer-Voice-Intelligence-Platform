@@ -59,12 +59,20 @@ export default async function SettingsPage() {
           <p className="mt-1 text-sm text-gray-500">{membership.orgName}</p>
         </div>
         {isAdmin && (
-          <Link
-            href="/settings/audit-log"
-            className="text-sm text-gray-500 underline hover:text-gray-900 dark:hover:text-gray-100"
-          >
-            View audit log
-          </Link>
+          <div className="flex gap-4">
+            <Link
+              href="/settings/widget"
+              className="text-sm text-gray-500 underline hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              Feedback widget
+            </Link>
+            <Link
+              href="/settings/audit-log"
+              className="text-sm text-gray-500 underline hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              View audit log
+            </Link>
+          </div>
         )}
       </div>
 

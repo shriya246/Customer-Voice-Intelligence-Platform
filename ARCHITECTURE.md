@@ -1,6 +1,6 @@
 # Architecture
 
-Status: Sprint 1 — foundation schema and auth architecture. Updated with the clustering pipeline in Sprint 2.
+Status: Sprint 1 (foundation, auth) complete. Sprint 2 (clustering pipeline) in progress.
 
 ## Overview
 
@@ -85,6 +85,33 @@ Bulk-insert strategy: unique channel (one row) and all unique tag names across t
 Tag filtering is a separate query, not an embedded-resource inner join: filtering `feedback_items` by tag via `.select("*, feedback_item_tags!inner(tag_id)").eq("feedback_item_tags.tag_id", x)` would work for *restricting which rows come back*, but the same embed used for *displaying* every tag on each row would then only show the one tag being filtered on, not the item's other tags — PostgREST's embedded-resource filtering scopes the embed itself, not just row inclusion. Instead: a first query resolves which `feedback_item_id`s have the target tag (`feedback_item_tags` where `tag_id = x`), then `.in("id", thoseIds)` on the main query, which keeps the *display* join (`feedback_item_tags(tags(name))`) unfiltered and complete. A tag with zero matches resolves to a single-element array containing a nil UUID, forcing the main query to correctly return zero rows rather than needing a separate no-results code path.
 
 Sprint 1's "done when" criterion — sign up, create an org, import feedback via CSV or the widget, browse/filter it — is met as of this feature.
+
+## Sprint 2: embedding + clustering pipeline
+
+### Model and infrastructure
+
+Embeddings come from `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions) via Hugging Face's **Inference Providers** API — checked the model's own Hub page before committing to it, since HF's infrastructure moved from a simple "any public model, one URL" Inference API to a provider-routed system (`router.huggingface.co`, requests dispatched to partner backends like `hf-inference`, Scaleway, Together, etc., not every model available everywhere). Confirmed this specific model is servable via the `hf-inference` provider and pinned to it explicitly (`provider: "hf-inference"`) rather than relying on provider auto-selection. Also confirmed via their own docs that the OpenAI-compatible chat endpoint is chat-only — embeddings have to go through the `@huggingface/inference` SDK's `featureExtraction()`, not a raw fetch to a REST endpoint, since request/response shape varies by provider and the SDK is what normalizes that.
+
+`getEmbedding()` (`src/lib/embeddings.ts`) handles a real ambiguity the SDK's own types admit to: the feature-extraction response type is `(number | number[] | number[][])[]`, because whether the provider already mean-pooled the result depends on the model/provider combination. Parses defensively — a flat array is used as-is, a single-element nested array is unwrapped, a multi-element nested array gets mean-pooled here — rather than assuming one shape. This is the one part of the pipeline **not yet verified against a real API response** (no Hugging Face token configured yet); everything else describes what's confirmed.
+
+384 dimensions is now load-bearing: `feedback_items.embedding` and `themes.centroid` are both `vector(384)`. Switching embedding models later means re-embedding every row, not a config change.
+
+### Clustering: incremental nearest-centroid, not batch
+
+Feedback arrives continuously, one item at a time (mostly) — this called for online/incremental clustering rather than a periodic batch job that reclusters everything from scratch, which also sidesteps needing any job scheduler (there isn't one in this stack; no Vercel Cron, no queue).
+
+For each newly embedded item: `find_nearest_theme(org_id, embedding)` (a SQL function using pgvector's `<=>` cosine-distance operator) returns the closest existing theme in the org, if any. If the distance is below `JOIN_THRESHOLD_DISTANCE` (`src/lib/clustering.ts`, currently `0.35`), the item joins that theme and the theme's centroid updates as an incremental running mean (`new = (old * old_count + embedding) / (old_count + 1)`) rather than recomputing from every member each time. Otherwise, a new theme is created with this item as its sole member and its embedding as the initial centroid.
+
+**The threshold is a starting guess, not a tuned constant** — there's no real embedded feedback yet to tune it against. Verified the *mechanism* is correct using synthetic (non-semantic) test vectors: near-identical embeddings join the same theme, an unrelated embedding starts a new one, and a third item matching the first topic correctly rejoins it rather than the second — but the actual right distance cutoff for real sentence embeddings on real feedback text can only be tuned once real data exists.
+
+A `parseVector()` helper handles a similar defensive-parsing situation to `getEmbedding()`: `vector` columns can come back from PostgREST as either a real array or its text representation, and this was actually confirmed both ways don't break anything by testing against the live database directly rather than assuming a single shape.
+
+### Where embedding/clustering gets triggered, and why it differs by ingestion path
+
+- **Manual entry and the widget** (one item at a time): embed and cluster synchronously, right after the `feedback_items` insert, before responding. Adds real latency to those two request paths (one external API call plus a couple of DB round trips) — an accepted tradeoff given there's no background job infrastructure to defer it to.
+- **CSV import**: deliberately *not* synchronous. A single import can be up to 2000 rows, and embedding each one is a separate external API call — well beyond what a serverless function's execution-time budget can afford in one request. CSV-imported rows land with `embedding`/`theme_id` left `null`, and `/dashboard` shows an "N feedback items not yet clustered" banner with a **Process next batch** button (`processUnclusteredBacklog`, `src/app/(app)/dashboard/actions.ts`) that embeds up to 20 at a time per click — an admin/member can click through a large backlog in a few batches after a big import.
+
+**Embedding/clustering is best-effort everywhere, never a condition of a feedback item actually being saved.** `tryEmbedAndCluster()` wraps the whole embed-and-assign flow in a try/catch that only logs — a missing `HUGGINGFACE_API_TOKEN`, a rate limit, or any other failure leaves the item stored and unclustered rather than turning an already-successful submission into a user-facing error. Verified directly: submitted real feedback through the live widget endpoint with no HF token configured (the actual current state), confirmed the request still returned `200 {"ok":true}`, confirmed the specific error was visibly logged server-side (not silently swallowed without a trace), and confirmed the row landed with `theme_id: null, embedding: null` as expected — this exact scenario is what happens for every submission until a real token is added, so it needed to work cleanly, not just in theory.
 
 ## Auth & onboarding flow
 

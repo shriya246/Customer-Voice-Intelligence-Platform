@@ -23,8 +23,9 @@ Done when: a user can sign up, create an org, import a batch of feedback via CSV
 
 Done when: imported feedback is auto-clustered into labeled themes with sentiment, and each theme has a computed opportunity score.
 
-- [ ] Embedding pipeline (pgvector) for feedback items
-- [ ] Clustering job grouping feedback into themes
+- [x] Embedding pipeline (pgvector) for feedback items
+  - [ ] *Follow-up:* Hugging Face token not connected yet — embedding fails open (item stays unclustered) until credentials exist (see chat)
+- [x] Clustering job grouping feedback into themes
 - [ ] AI-generated theme labels + summaries (Groq)
 - [ ] Sentiment tagging + pain-point extraction per feedback item (Groq)
 - [ ] Opportunity scoring engine (RICE-based, per `RICE_PRIORITIZATION.md`)

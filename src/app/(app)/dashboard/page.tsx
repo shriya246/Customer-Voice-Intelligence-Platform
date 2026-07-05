@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
+import { ProcessBacklogButton } from "./process-backlog-button";
 
 export const metadata: Metadata = { title: "Dashboard — VoiceIQ Enterprise" };
 
@@ -16,6 +17,7 @@ type FeedbackRow = {
   channels: { name: string } | null;
   customers: { name: string | null } | null;
   feedback_item_tags: { tags: { name: string } | null }[];
+  themes: { name: string | null } | null;
 };
 
 type SearchParams = {
@@ -54,10 +56,16 @@ export default async function DashboardPage({
     if (matchingIds.length === 0) matchingIds = [NO_MATCH_ID];
   }
 
+  const { count: unclusteredCount } = await supabase
+    .from("feedback_items")
+    .select("*", { count: "exact", head: true })
+    .eq("org_id", membership.orgId)
+    .is("theme_id", null);
+
   let query = supabase
     .from("feedback_items")
     .select(
-      "id, content, source, created_at, channels(name), customers(name), feedback_item_tags(tags(name))",
+      "id, content, source, created_at, channels(name), customers(name), feedback_item_tags(tags(name)), themes(name)",
       { count: "exact" }
     )
     .eq("org_id", membership.orgId);
@@ -202,6 +210,12 @@ export default async function DashboardPage({
         )}
       </form>
 
+      {membership.role !== "viewer" && (
+        <div className="mt-4">
+          <ProcessBacklogButton unclusteredCount={unclusteredCount ?? 0} />
+        </div>
+      )}
+
       <p className="mt-4 text-sm text-gray-500">{count ?? 0} result{count === 1 ? "" : "s"}</p>
 
       {items.length === 0 ? (
@@ -214,6 +228,7 @@ export default async function DashboardPage({
             <thead>
               <tr className="border-b border-gray-200 text-gray-500 dark:border-neutral-800">
                 <th className="p-3 font-normal">Content</th>
+                <th className="p-3 font-normal">Theme</th>
                 <th className="p-3 font-normal">Channel</th>
                 <th className="p-3 font-normal">Customer</th>
                 <th className="p-3 font-normal">Tags</th>
@@ -226,6 +241,13 @@ export default async function DashboardPage({
                 <tr key={item.id} className="border-b border-gray-100 dark:border-neutral-800">
                   <td className="max-w-sm p-3">
                     <span className="line-clamp-2">{item.content}</span>
+                  </td>
+                  <td className="p-3 whitespace-nowrap">
+                    {item.themes?.name ?? (
+                      <span className="text-gray-400 italic">
+                        {item.themes ? "unlabeled" : "unclustered"}
+                      </span>
+                    )}
                   </td>
                   <td className="p-3 whitespace-nowrap">{item.channels?.name ?? "—"}</td>
                   <td className="p-3 whitespace-nowrap">{item.customers?.name ?? "—"}</td>

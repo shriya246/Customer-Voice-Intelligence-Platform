@@ -225,6 +225,10 @@ Reviewed every RLS policy across all 15 migrations directly against their source
 
 Found the same class of bug as the `tags` UPDATE-policy gap above, in two join-table INSERT policies: `feedback_item_tags` and `persona_themes` both checked that the caller had the right role on one side of the link (the feedback item's org, the persona's org) but never verified the *other* foreign key (`tag_id`, `theme_id`) actually belonged to that same org. The app's own code never constructs a cross-org pair — tags/themes are always looked up or created within the caller's own org first — but RLS, not application code, is the real boundary: an authenticated member could call PostgREST directly (bypassing the Next.js server actions entirely) with a foreign org's tag/theme UUID and have it accepted. Fixed in `20260705250000_cross_org_link_policies.sql` by joining across both tables in the `with check` clause. Verified live: a cross-org attempt on both tables now fails with `42501`, while same-org linking still succeeds.
 
+## Hardening pass: rate-limit audit
+
+The widget endpoint (`api/widget/[channelId]`) is the only unauthenticated, publicly-reachable write surface in the app, and it's the only place `checkRateLimit` is called — correctly, before any database work, keyed on `x-forwarded-for` (set by the platform's own edge proxy, not client-controlled). The other bulk-write surface, CSV import, requires authentication (org membership, viewers blocked) and already caps input at 2000 rows via Zod, so it doesn't need IP rate limiting on top. No gap found; the only open item is the one already tracked in `BACKLOG.md` — Upstash isn't connected yet, so the limiter fails open with a console warning until that credential exists.
+
 ## Free-tier ceilings to watch
 
 - **Supabase free tier:** 500MB database, 1GB file storage, 5GB egress/month, project pauses after 7 days with no API requests (auto-resumes on next request, but the pause itself is worth knowing about for a portfolio demo that might sit idle).

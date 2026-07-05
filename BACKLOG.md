@@ -38,7 +38,7 @@ Done when: imported feedback is auto-clustered into labeled themes with sentimen
 Done when: the full loop (feedback in → clustered/scored → persona/roadmap/executive output) is demoable end to end and deployed.
 
 - [ ] AI-generated, data-backed personas from clustered feedback
-- [ ] Feature request tracker linked to themes, with roadmap status
+- [x] Feature request tracker linked to themes, with roadmap status
 - [ ] Competitive insight notes field (manual + AI-assisted summarization)
 - [ ] Executive summary generator (auto-drafted narrative)
 - [ ] Hardening pass: RLS audit, rate-limit audit, error tracking, core-flow test coverage

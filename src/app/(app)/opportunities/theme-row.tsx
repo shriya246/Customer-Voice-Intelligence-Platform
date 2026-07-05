@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { updateThemeScoring } from "./actions";
+import { addThemeToRoadmap } from "../roadmap/actions";
 import type { OpportunityScore } from "@/lib/scoring";
 
 export function ThemeRow({
@@ -35,6 +36,18 @@ export function ThemeRow({
         <div className="shrink-0 text-right">
           <div className="text-2xl font-semibold">{score.opportunityScore}</div>
           <div className="text-xs text-gray-400">opportunity score</div>
+          {canEdit && (
+            <form action={addThemeToRoadmap} className="mt-2">
+              <input type="hidden" name="themeId" value={themeId} />
+              <input type="hidden" name="title" value={name ?? "Unlabeled theme"} />
+              <button
+                type="submit"
+                className="rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700"
+              >
+                Add to roadmap
+              </button>
+            </form>
+          )}
         </div>
       </div>
 

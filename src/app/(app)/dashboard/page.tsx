@@ -134,6 +134,12 @@ export default async function DashboardPage({
           >
             Trends
           </Link>
+          <Link
+            href="/roadmap"
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
+          >
+            Roadmap
+          </Link>
           {membership.role !== "viewer" && (
             <>
               <Link

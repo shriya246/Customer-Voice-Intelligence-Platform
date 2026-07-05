@@ -1,6 +1,6 @@
 # Architecture
 
-Status: Sprint 1 (foundation, auth) complete. Sprint 2 (clustering pipeline) in progress.
+Status: Sprints 1–2 complete. Sprint 3 (personas, roadmap, executive layer) in progress.
 
 ## Overview
 
@@ -139,6 +139,14 @@ The actual RICE formula lives in `src/lib/scoring.ts`, in application code, not 
 `get_theme_trend(theme_id, weeks)` returns weekly-bucketed item counts (`date_trunc('week', created_at)`) for a theme, most recent N weeks (default 8). `/trends` (`src/lib/trends.ts`) computes a rising/falling/flat direction per theme by comparing the last 2 weeks' total against the 2 weeks before that (a ±10% band counts as "flat," so noise doesn't read as a trend), and renders one small Recharts bar chart per theme (small multiples — a single series each, so no legend, one sequential hue). Rising themes sort first, since those are the ones that most need a PM's attention; direction badges use status colors keyed to business meaning, not the literal direction — **rising complaint volume is bad, not good**, so "rising" gets a warning tone and "falling" gets the good/green tone, the reverse of a naive "up = green" default.
 
 **A real bug in the comparison logic, caught by testing with intentionally gappy data rather than a clean synthetic week-by-week series:** the first implementation summed "the last 2 elements of the weeks array" for the recent period and "the 2 before that" for prior — but `get_theme_trend`'s `GROUP BY` only returns weeks that actually have at least one item, so the array is **sparse**, not a dense run of consecutive weeks. Any theme with even one zero-feedback week in its recent history would have its comparison window silently shifted, mixing older data into what was supposed to be a "last 2 weeks" figure. Caught this by deliberately testing with gappy timestamps (not evenly-spaced weekly data) rather than a clean case that would have passed either way — a "rising" test theme initially came back misclassified. Fixed by filtering on each week's actual date against `now() - N weeks` instead of array position; re-verified with both a rising and a falling synthetic dataset, both now classify correctly.
+
+## Sprint 3: roadmap integration
+
+`roadmap_items` (org_id, optional `theme_id`, title, description, status) tracks feature requests through a fixed lifecycle (`under_review` → `planned` → `in_progress` → `shipped`, or `declined`), enforced by a Postgres `check` constraint rather than just application-level validation — confirmed the constraint actually rejects an invalid status value, not just that the app happens not to send one. RLS mirrors `feedback_items`/`themes`: any member reads, admin/member writes, admin-only deletes (not built yet, but the policy is ready).
+
+**Two entry points, one shared insert path:** `/roadmap` has a full form (title, description, optional theme link) for standalone feature ideas; `/opportunities` has a one-click **Add to roadmap** button per theme, pre-filled with the theme's own name and id, no form needed — the traceability the opportunity-scoring section already established (score → underlying feedback) extends one step further here (score → roadmap decision). The one-click version is a separate, simpler Server Action (`addThemeToRoadmap`, plain form action, no `prevState`/error-UI plumbing) rather than reusing the full form's action, since it never needs to surface a validation error the page itself doesn't already guarantee won't happen (theme id and name both come from data already on the page).
+
+`/roadmap` is a five-column board (one per status) rather than a flat list with a status filter — a PM scanning "what's shipped vs. what's still under review" benefits from seeing all five states at once, which a single filtered list would hide behind repeated filter-switching.
 
 ## Auth & onboarding flow
 

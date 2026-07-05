@@ -1,0 +1,13 @@
+import type { Metadata } from "next";
+import { LoginForm } from "./login-form";
+
+export const metadata: Metadata = { title: "Sign in — VoiceIQ Enterprise" };
+
+export default function LoginPage() {
+  return (
+    <>
+      <h1 className="mb-6 text-xl font-semibold">Sign in</h1>
+      <LoginForm />
+    </>
+  );
+}

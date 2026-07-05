@@ -32,6 +32,7 @@ const SENTIMENT_STYLES: Record<string, string> = {
 type SearchParams = {
   channel?: string;
   tag?: string;
+  theme?: string;
   from?: string;
   to?: string;
   q?: string;
@@ -49,6 +50,10 @@ export default async function DashboardPage({
 
   const supabase = await createClient();
   const page = Math.max(1, Number(params.page) || 1);
+
+  const filteredTheme = params.theme
+    ? (await supabase.from("themes").select("name").eq("id", params.theme).single()).data
+    : null;
 
   const [{ data: channels }, { data: tags }] = await Promise.all([
     supabase.from("channels").select("id, name").eq("org_id", membership.orgId).order("name"),
@@ -80,6 +85,7 @@ export default async function DashboardPage({
     .eq("org_id", membership.orgId);
 
   if (params.channel) query = query.eq("channel_id", params.channel);
+  if (params.theme) query = query.eq("theme_id", params.theme);
   if (params.from) query = query.gte("created_at", params.from);
   if (params.to) query = query.lte("created_at", `${params.to}T23:59:59`);
   if (params.q) query = query.ilike("content", `%${params.q}%`);
@@ -96,6 +102,7 @@ export default async function DashboardPage({
     const sp = new URLSearchParams();
     if (params.channel) sp.set("channel", params.channel);
     if (params.tag) sp.set("tag", params.tag);
+    if (params.theme) sp.set("theme", params.theme);
     if (params.from) sp.set("from", params.from);
     if (params.to) sp.set("to", params.to);
     if (params.q) sp.set("q", params.q);
@@ -114,22 +121,30 @@ export default async function DashboardPage({
             {membership.orgName}.
           </p>
         </div>
-        {membership.role !== "viewer" && (
-          <div className="flex gap-3">
-            <Link
-              href="/feedback/import"
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-            >
-              Import CSV
-            </Link>
-            <Link
-              href="/feedback/new"
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
-            >
-              Log feedback
-            </Link>
-          </div>
-        )}
+        <div className="flex gap-3">
+          <Link
+            href="/opportunities"
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
+          >
+            Opportunities
+          </Link>
+          {membership.role !== "viewer" && (
+            <>
+              <Link
+                href="/feedback/import"
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
+              >
+                Import CSV
+              </Link>
+              <Link
+                href="/feedback/new"
+                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
+              >
+                Log feedback
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       <form method="get" className="mt-8 flex flex-wrap items-end gap-3">
@@ -212,7 +227,7 @@ export default async function DashboardPage({
         >
           Filter
         </button>
-        {(params.channel || params.tag || params.from || params.to || params.q) && (
+        {(params.channel || params.tag || params.theme || params.from || params.to || params.q) && (
           <Link href="/dashboard" className="text-sm text-gray-500 underline">
             Clear
           </Link>
@@ -223,6 +238,15 @@ export default async function DashboardPage({
         <div className="mt-4">
           <ProcessBacklogButton unclusteredCount={unclusteredCount ?? 0} />
         </div>
+      )}
+
+      {params.theme && (
+        <p className="mt-4 text-sm text-gray-500">
+          Showing feedback for theme:{" "}
+          <span className="font-medium text-gray-900 dark:text-gray-100">
+            {filteredTheme?.name ?? "unlabeled theme"}
+          </span>
+        </p>
       )}
 
       <p className="mt-4 text-sm text-gray-500">{count ?? 0} result{count === 1 ? "" : "s"}</p>

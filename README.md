@@ -32,10 +32,16 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Project docs
 
+- [EXECUTIVE_PRESENTATION.md](./EXECUTIVE_PRESENTATION.md) — one-page overview
+- [EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md) — sprint-by-sprint status
 - [PROJECT_PLAN.md](./PROJECT_PLAN.md) — vision and sprint plan
 - [PRD.md](./PRD.md) — product requirements
 - [PERSONAS.md](./PERSONAS.md) — target users
 - [COMPETITIVE_ANALYSIS.md](./COMPETITIVE_ANALYSIS.md) — market landscape
+- [OPPORTUNITY_FRAMEWORK.md](./OPPORTUNITY_FRAMEWORK.md) / [RICE_PRIORITIZATION.md](./RICE_PRIORITIZATION.md) — how opportunity scoring works
+- [KPI_FRAMEWORK.md](./KPI_FRAMEWORK.md) — how success is measured
+- [GTM_STRATEGY.md](./GTM_STRATEGY.md) — go-to-market plan
+- [PRICING_STRATEGY.md](./PRICING_STRATEGY.md) — pricing plan
 - [ROADMAP.md](./ROADMAP.md) — MVP → V1 → V2
 - [BACKLOG.md](./BACKLOG.md) — current sprint backlog
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — schema, API, pipeline design

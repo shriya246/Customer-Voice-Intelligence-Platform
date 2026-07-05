@@ -44,5 +44,5 @@ Done when: the full loop (feedback in → clustered/scored → persona/roadmap/e
   - [ ] *Follow-up:* Groq key not connected yet — the "summarize mentions" call itself unverified until credentials exist (see chat)
 - [x] Executive summary generator (auto-drafted narrative)
   - [ ] *Follow-up:* Groq key not connected yet — the narration call itself unverified until credentials exist (see chat)
-- [ ] Hardening pass: RLS audit, rate-limit audit, error tracking, core-flow test coverage
-- [ ] PM docs: `GTM_STRATEGY.md`, `PRICING_STRATEGY.md`, final `EXECUTIVE_SUMMARY.md`, one-page Executive Presentation doc
+- [x] Hardening pass: RLS audit, rate-limit audit, error tracking, core-flow test coverage
+- [x] PM docs: `GTM_STRATEGY.md`, `PRICING_STRATEGY.md`, final `EXECUTIVE_SUMMARY.md`, one-page Executive Presentation doc

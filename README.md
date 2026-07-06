@@ -2,6 +2,8 @@
 
 Customer feedback is scattered across support tickets, reviews, surveys, call notes, and sales conversations — which means the loudest voice, not the most common or highest-impact one, tends to win roadmap debates. VoiceIQ turns that scattered feedback into a continuously updated, prioritized product opportunity map, so prioritization is evidence-based instead of anecdote-based.
 
+**Live:** [customer-voice-intelligence-platfor.vercel.app](https://customer-voice-intelligence-platfor.vercel.app)
+
 ## What it does
 
 - Ingests feedback from multiple channels (manual entry, CSV import, embeddable widget)

@@ -21,20 +21,22 @@ export default async function WidgetSettingsPage() {
 
   return (
     <div>
-      <Link href="/settings" className="text-sm text-gray-500 hover:underline">
+      <Link href="/settings" className="text-sm text-muted-foreground hover:text-foreground">
         ← Settings
       </Link>
-      <h1 className="mt-2 mb-2 text-2xl font-semibold">Feedback widget</h1>
-      <p className="mb-6 text-sm text-gray-500">
+      <h1 className="mt-2 mb-2 animate-slide-up text-2xl font-semibold tracking-tight text-foreground">
+        Feedback widget
+      </h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         Embed this on your own site to collect feedback directly into a channel — no login required for whoever fills it out.
       </p>
 
       {!channels || channels.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           No channels yet — log or import some feedback first to create one.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="stagger-children space-y-3">
           {channels.map((channel) => (
             <ChannelEmbed
               key={channel.id}

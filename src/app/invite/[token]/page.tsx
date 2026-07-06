@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AcceptInviteButton } from "./accept-invite-button";
+import { ButtonLink } from "@/components/ui/button";
 
 export default async function InvitePage({
   params,
@@ -22,43 +22,40 @@ export default async function InvitePage({
   const next = `/invite/${token}`;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 dark:bg-neutral-950">
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,var(--color-primary-soft),transparent)] opacity-60"
+      />
+      <div className="w-full max-w-sm animate-slide-up rounded-xl border border-border bg-surface p-8 text-center shadow-sm">
         {!invite ? (
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            This invite link isn&apos;t valid.
-          </p>
+          <p className="text-sm text-muted-foreground">This invite link isn&apos;t valid.</p>
         ) : invite.status !== "pending" ? (
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            This invite has already been {invite.status}.
-          </p>
+          <p className="text-sm text-muted-foreground">This invite has already been {invite.status}.</p>
         ) : (
           <>
-            <h1 className="mb-2 text-xl font-semibold">You&apos;re invited</h1>
-            <p className="mb-6 text-sm text-gray-500">
-              Join <span className="font-medium">{invite.org_name}</span> as a{" "}
-              {invite.role}.
+            <h1 className="mb-2 text-xl font-semibold text-foreground">You&apos;re invited</h1>
+            <p className="mb-6 text-sm text-muted-foreground">
+              Join <span className="font-medium text-foreground">{invite.org_name}</span> as a {invite.role}.
             </p>
             {user ? (
               <AcceptInviteButton token={token} />
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Sign in or create an account with{" "}
-                  <span className="font-medium">{invite.email}</span> to accept.
+                  <span className="font-medium text-foreground">{invite.email}</span> to accept.
                 </p>
-                <Link
-                  href={`/login?next=${encodeURIComponent(next)}`}
-                  className="block w-full rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
-                >
+                <ButtonLink href={`/login?next=${encodeURIComponent(next)}`} className="w-full">
                   Sign in
-                </Link>
-                <Link
+                </ButtonLink>
+                <ButtonLink
                   href={`/signup?next=${encodeURIComponent(next)}`}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-medium dark:border-neutral-700"
+                  variant="secondary"
+                  className="w-full"
                 >
                   Create account
-                </Link>
+                </ButtonLink>
               </div>
             )}
           </>

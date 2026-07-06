@@ -5,6 +5,8 @@ import { getCurrentMembership } from "@/lib/org";
 import { MemberRow } from "./member-row";
 import { InviteForm } from "./invite-form";
 import { revokeInvite } from "./actions";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Settings — VoiceIQ Enterprise" };
 
@@ -52,37 +54,31 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Settings</h1>
-          <p className="mt-1 text-sm text-gray-500">{membership.orgName}</p>
-        </div>
-        {isAdmin && (
-          <div className="flex gap-4">
-            <Link
-              href="/settings/widget"
-              className="text-sm text-gray-500 underline hover:text-gray-900 dark:hover:text-gray-100"
-            >
-              Feedback widget
-            </Link>
-            <Link
-              href="/settings/audit-log"
-              className="text-sm text-gray-500 underline hover:text-gray-900 dark:hover:text-gray-100"
-            >
-              View audit log
-            </Link>
-          </div>
-        )}
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Settings"
+        description={membership.orgName}
+        action={
+          isAdmin ? (
+            <div className="flex gap-4 text-sm">
+              <Link href="/settings/widget" className="font-medium text-primary hover:text-primary-hover">
+                Feedback widget
+              </Link>
+              <Link href="/settings/audit-log" className="font-medium text-primary hover:text-primary-hover">
+                View audit log
+              </Link>
+            </div>
+          ) : undefined
+        }
+      />
 
-      <section>
-        <h2 className="text-lg font-medium">Members</h2>
+      <Card className="animate-slide-up p-5">
+        <h2 className="text-sm font-semibold text-foreground">Members</h2>
         <table className="mt-4 w-full text-left">
           <thead>
-            <tr className="border-b border-gray-200 text-sm text-gray-500 dark:border-neutral-800">
-              <th className="pb-2 font-normal">Name</th>
-              <th className="pb-2 font-normal">Role</th>
+            <tr className="border-b border-border text-sm text-muted-foreground">
+              <th className="pb-2 font-medium">Name</th>
+              <th className="pb-2 font-medium">Role</th>
               <th className="pb-2"></th>
             </tr>
           </thead>
@@ -101,12 +97,12 @@ export default async function SettingsPage() {
             ))}
           </tbody>
         </table>
-      </section>
+      </Card>
 
       {isAdmin && (
-        <section>
-          <h2 className="text-lg font-medium">Invite a teammate</h2>
-          <p className="mt-1 text-sm text-gray-500">
+        <Card className="animate-slide-up p-5" style={{ animationDelay: "60ms" }}>
+          <h2 className="text-sm font-semibold text-foreground">Invite a teammate</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Generates a shareable link — send it however you want. Anyone with the link and a matching email can join.
           </p>
           <div className="mt-4">
@@ -115,20 +111,20 @@ export default async function SettingsPage() {
 
           {invites.length > 0 && (
             <div className="mt-6">
-              <h3 className="text-sm font-medium text-gray-500">Pending invites</h3>
-              <ul className="mt-2 divide-y divide-gray-100 dark:divide-neutral-800">
+              <h3 className="text-sm font-medium text-muted-foreground">Pending invites</h3>
+              <ul className="mt-2 divide-y divide-border">
                 {invites.map((invite) => (
-                  <li
-                    key={invite.id}
-                    className="flex items-center justify-between py-2 text-sm"
-                  >
-                    <span>
-                      {invite.email} <span className="text-gray-400">({invite.role})</span>
+                  <li key={invite.id} className="flex items-center justify-between py-2 text-sm">
+                    <span className="text-foreground">
+                      {invite.email} <span className="text-muted-foreground">({invite.role})</span>
                     </span>
                     <form action={revokeInvite}>
                       <input type="hidden" name="inviteId" value={invite.id} />
                       <input type="hidden" name="orgId" value={membership.orgId} />
-                      <button type="submit" className="text-red-600 hover:underline">
+                      <button
+                        type="submit"
+                        className="text-red-600 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
                         Revoke
                       </button>
                     </form>
@@ -137,7 +133,7 @@ export default async function SettingsPage() {
               </ul>
             </div>
           )}
-        </section>
+        </Card>
       )}
     </div>
   );

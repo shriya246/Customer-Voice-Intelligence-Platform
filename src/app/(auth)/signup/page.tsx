@@ -12,7 +12,7 @@ export default async function SignupPage({
 
   return (
     <>
-      <h1 className="mb-6 text-xl font-semibold">Create your account</h1>
+      <h1 className="mb-6 text-xl font-semibold text-foreground">Create your account</h1>
       <SignupForm next={next} />
     </>
   );

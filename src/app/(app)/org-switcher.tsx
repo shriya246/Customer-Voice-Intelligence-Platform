@@ -14,11 +14,7 @@ export function OrgSwitcher({
   const formRef = useRef<HTMLFormElement>(null);
 
   if (memberships.length <= 1) {
-    return (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
-        {memberships[0]?.orgName}
-      </span>
-    );
+    return <span className="text-sm font-medium text-foreground">{memberships[0]?.orgName}</span>;
   }
 
   return (
@@ -27,7 +23,7 @@ export function OrgSwitcher({
         name="orgId"
         defaultValue={currentOrgId}
         onChange={() => formRef.current?.requestSubmit()}
-        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+        className="rounded-md border border-border bg-surface px-2 py-1 text-sm font-medium text-foreground transition-colors hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-primary/20"
       >
         {memberships.map((m) => (
           <option key={m.orgId} value={m.orgId}>

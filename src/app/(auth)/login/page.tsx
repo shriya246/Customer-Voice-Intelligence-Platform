@@ -12,7 +12,7 @@ export default async function LoginPage({
 
   return (
     <>
-      <h1 className="mb-6 text-xl font-semibold">Sign in</h1>
+      <h1 className="mb-6 text-xl font-semibold text-foreground">Sign in</h1>
       <LoginForm next={next} />
     </>
   );

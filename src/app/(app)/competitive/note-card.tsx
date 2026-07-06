@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { summarizeCompetitor } from "./actions";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/input";
 
 export function NoteCard({
   noteId,
@@ -22,24 +25,26 @@ export function NoteCard({
   const router = useRouter();
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4 dark:border-neutral-800">
-      <p className="font-medium">{competitorName}</p>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{note}</p>
+    <Card interactive className="p-4">
+      <p className="font-medium text-foreground">{competitorName}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{note}</p>
 
       {aiSummary && (
-        <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm dark:bg-neutral-800">
-          <p className="text-xs font-medium text-gray-500">
+        <div className="mt-3 animate-fade-in rounded-lg bg-primary-soft p-3 text-sm">
+          <p className="text-xs font-medium text-primary-soft-foreground/80">
             What customers actually say (AI-summarized from feedback mentions)
           </p>
-          <p className="mt-1 text-gray-700 dark:text-gray-300">{aiSummary}</p>
+          <p className="mt-1 text-primary-soft-foreground">{aiSummary}</p>
         </div>
       )}
 
       {canEdit && (
         <div className="mt-3">
-          <button
+          <Button
             type="button"
-            disabled={isPending}
+            variant="secondary"
+            size="sm"
+            loading={isPending}
             onClick={() =>
               startTransition(async () => {
                 setError(null);
@@ -48,17 +53,12 @@ export function NoteCard({
                 else router.refresh();
               })
             }
-            className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium disabled:opacity-50 dark:border-neutral-700"
           >
-            {isPending ? "Summarizing..." : aiSummary ? "Refresh summary" : "Summarize feedback mentions"}
-          </button>
-          {error && (
-            <p className="mt-1 text-xs text-red-600" role="alert">
-              {error}
-            </p>
-          )}
+            {isPending ? "Summarizing…" : aiSummary ? "Refresh summary" : "Summarize feedback mentions"}
+          </Button>
+          <FieldError>{error}</FieldError>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

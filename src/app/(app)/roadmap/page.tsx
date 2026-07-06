@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
 import { RoadmapItemCard } from "./roadmap-item-card";
 import { NewItemForm } from "./new-item-form";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata: Metadata = { title: "Roadmap — VoiceIQ Enterprise" };
 
 const COLUMNS = [
-  { value: "under_review", label: "Under review" },
-  { value: "planned", label: "Planned" },
-  { value: "in_progress", label: "In progress" },
-  { value: "shipped", label: "Shipped" },
-  { value: "declined", label: "Declined" },
+  { value: "under_review", label: "Under review", dot: "bg-muted-foreground" },
+  { value: "planned", label: "Planned", dot: "bg-primary" },
+  { value: "in_progress", label: "In progress", dot: "bg-orange-500" },
+  { value: "shipped", label: "Shipped", dot: "bg-emerald-500" },
+  { value: "declined", label: "Declined", dot: "bg-red-400" },
 ];
 
 type RoadmapItem = {
@@ -43,26 +43,20 @@ export default async function RoadmapPage() {
 
   return (
     <div>
-      <Link href="/dashboard" className="text-sm text-gray-500 hover:underline">
-        ← Dashboard
-      </Link>
-      <div className="mt-2 mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Roadmap</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Feature requests, linked back to the customer feedback that motivated them.
-          </p>
-        </div>
-        {canEdit && <NewItemForm themes={themes ?? []} />}
-      </div>
+      <PageHeader
+        title="Roadmap"
+        description="Feature requests, linked back to the customer feedback that motivated them."
+        action={canEdit ? <NewItemForm themes={themes ?? []} /> : undefined}
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="stagger-children grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {COLUMNS.map((col) => {
           const columnItems = rows.filter((item) => item.status === col.value);
           return (
             <div key={col.value}>
-              <h2 className="mb-2 text-sm font-medium text-gray-500">
-                {col.label} <span className="text-gray-400">({columnItems.length})</span>
+              <h2 className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} />
+                {col.label} <span className="text-muted-foreground/70">({columnItems.length})</span>
               </h2>
               <div className="space-y-2">
                 {columnItems.map((item) => (
@@ -78,7 +72,7 @@ export default async function RoadmapPage() {
                   />
                 ))}
                 {columnItems.length === 0 && (
-                  <p className="text-xs text-gray-400 italic">Nothing here</p>
+                  <p className="text-xs italic text-muted-foreground/70">Nothing here</p>
                 )}
               </div>
             </div>

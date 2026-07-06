@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { generateSummary } from "./actions";
+import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/input";
 
 export function GenerateButton() {
   const [isPending, startTransition] = useTransition();
@@ -11,9 +13,9 @@ export function GenerateButton() {
 
   return (
     <div>
-      <button
+      <Button
         type="button"
-        disabled={isPending}
+        loading={isPending}
         onClick={() =>
           startTransition(async () => {
             setError(null);
@@ -22,15 +24,10 @@ export function GenerateButton() {
             else router.refresh();
           })
         }
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-gray-900"
       >
-        {isPending ? "Generating..." : "Generate new summary"}
-      </button>
-      {error && (
-        <p className="mt-2 text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      )}
+        {isPending ? "Generating…" : "Generate new summary"}
+      </Button>
+      <FieldError>{error}</FieldError>
     </div>
   );
 }

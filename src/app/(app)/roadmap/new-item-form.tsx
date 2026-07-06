@@ -2,6 +2,9 @@
 
 import { useActionState, useState } from "react";
 import { createRoadmapItem } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Input, Textarea, Select, Label, FieldError } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 
 export function NewItemForm({
   themes,
@@ -13,82 +16,50 @@ export function NewItemForm({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
-      >
+      <Button type="button" onClick={() => setOpen(true)}>
         New feature request
-      </button>
+      </Button>
     );
   }
 
   return (
-    <form action={formAction} className="max-w-md space-y-3 rounded-lg border border-gray-200 p-4 dark:border-neutral-800">
-      <div>
-        <label htmlFor="title" className="block text-sm font-medium">
-          Title
-        </label>
-        <input
-          id="title"
-          name="title"
-          type="text"
-          required
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-        />
-      </div>
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium">
-          Description <span className="text-gray-400">(optional)</span>
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          rows={3}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-        />
-      </div>
-      {themes.length > 0 && (
+    <Card className="w-full max-w-md animate-scale-in p-4">
+      <form action={formAction} className="space-y-3">
         <div>
-          <label htmlFor="themeId" className="block text-sm font-medium">
-            Linked theme <span className="text-gray-400">(optional)</span>
-          </label>
-          <select
-            id="themeId"
-            name="themeId"
-            defaultValue=""
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-          >
-            <option value="">None</option>
-            {themes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name ?? "Unlabeled theme"}
-              </option>
-            ))}
-          </select>
+          <Label htmlFor="title">Title</Label>
+          <Input id="title" name="title" type="text" required />
         </div>
-      )}
-      {state?.error && (
-        <p className="text-sm text-red-600" role="alert">
-          {state.error}
-        </p>
-      )}
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-gray-900"
-        >
-          {isPending ? "Adding..." : "Add"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+        <div>
+          <Label htmlFor="description">
+            Description <span className="font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Textarea id="description" name="description" rows={3} />
+        </div>
+        {themes.length > 0 && (
+          <div>
+            <Label htmlFor="themeId">
+              Linked theme <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Select id="themeId" name="themeId" defaultValue="">
+              <option value="">None</option>
+              {themes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name ?? "Unlabeled theme"}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+        {state?.error && <FieldError>{state.error}</FieldError>}
+        <div className="flex gap-2">
+          <Button type="submit" loading={isPending}>
+            {isPending ? "Adding…" : "Add"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }

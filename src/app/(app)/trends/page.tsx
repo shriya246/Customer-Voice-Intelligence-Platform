@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
 import { getThemeTrend } from "@/lib/trends";
 import { ThemeTrendCard } from "./theme-trend-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Trends — VoiceIQ Enterprise" };
 
@@ -34,20 +35,18 @@ export default async function TrendsPage() {
 
   return (
     <div>
-      <Link href="/dashboard" className="text-sm text-gray-500 hover:underline">
-        ← Dashboard
-      </Link>
-      <h1 className="mt-2 mb-2 text-2xl font-semibold">Trends</h1>
-      <p className="mb-6 text-sm text-gray-500">
-        Weekly feedback volume per theme, last 8 weeks. Rising themes surface first.
-      </p>
+      <PageHeader
+        title="Trends"
+        description="Weekly feedback volume per theme, last 8 weeks. Rising themes surface first."
+      />
 
       {withTrends.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-neutral-700">
-          No themes yet — feedback gets clustered into themes automatically as it&apos;s processed.
-        </div>
+        <EmptyState
+          title="No themes yet"
+          description="Feedback gets clustered into themes automatically as it's processed."
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stagger-children grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {withTrends.map(({ theme, trend }) => (
             <ThemeTrendCard
               key={theme.id}

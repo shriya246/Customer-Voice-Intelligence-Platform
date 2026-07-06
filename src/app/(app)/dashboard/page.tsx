@@ -3,6 +3,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/org";
 import { ProcessBacklogButton } from "./process-backlog-button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Card, EmptyState } from "@/components/ui/card";
+import { SentimentBadge } from "@/components/ui/badge";
+import { Input, Select, Label } from "@/components/ui/input";
 
 export const metadata: Metadata = { title: "Dashboard — VoiceIQ Enterprise" };
 
@@ -19,14 +24,6 @@ type FeedbackRow = {
   customers: { name: string | null } | null;
   feedback_item_tags: { tags: { name: string } | null }[];
   themes: { name: string | null } | null;
-};
-
-const SENTIMENT_STYLES: Record<string, string> = {
-  very_negative: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-  negative: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
-  neutral: "bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-gray-300",
-  positive: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  very_positive: "bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200",
 };
 
 type SearchParams = {
@@ -111,215 +108,143 @@ export default async function DashboardPage({
     return qs ? `/dashboard?${qs}` : "/dashboard";
   }
 
+  const hasFilters = Boolean(
+    params.channel || params.tag || params.theme || params.from || params.to || params.q
+  );
+
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Signed in as a{membership.role === "admin" ? "n" : ""} {membership.role} of{" "}
-            {membership.orgName}.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Link
-            href="/opportunities"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-          >
-            Opportunities
-          </Link>
-          <Link
-            href="/trends"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-          >
-            Trends
-          </Link>
-          <Link
-            href="/roadmap"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-          >
-            Roadmap
-          </Link>
-          <Link
-            href="/personas"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-          >
-            Personas
-          </Link>
-          <Link
-            href="/competitive"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-          >
-            Competitive
-          </Link>
-          <Link
-            href="/executive-summary"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-          >
-            Exec Summary
-          </Link>
-          {membership.role !== "viewer" && (
-            <>
-              <Link
-                href="/feedback/import"
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
-              >
+      <PageHeader
+        title="Dashboard"
+        description={`Signed in as a${membership.role === "admin" ? "n" : ""} ${membership.role} of ${membership.orgName}.`}
+        action={
+          membership.role !== "viewer" ? (
+            <div className="flex gap-2">
+              <ButtonLink href="/feedback/import" variant="secondary" size="sm">
                 Import CSV
-              </Link>
-              <Link
-                href="/feedback/new"
-                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
-              >
+              </ButtonLink>
+              <ButtonLink href="/feedback/new" size="sm">
                 Log feedback
-              </Link>
-            </>
+              </ButtonLink>
+            </div>
+          ) : undefined
+        }
+      />
+
+      {membership.role !== "viewer" && <ProcessBacklogButton unclusteredCount={unclusteredCount ?? 0} />}
+
+      <Card className="animate-slide-up p-4" style={{ animationDelay: "40ms" }}>
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label htmlFor="q" className="text-xs">
+              Search
+            </Label>
+            <Input
+              id="q"
+              name="q"
+              type="text"
+              defaultValue={params.q ?? ""}
+              placeholder="Search content…"
+              className="w-48"
+            />
+          </div>
+          <div>
+            <Label htmlFor="channel" className="text-xs">
+              Channel
+            </Label>
+            <Select id="channel" name="channel" defaultValue={params.channel ?? ""}>
+              <option value="">All channels</option>
+              {(channels ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="tag" className="text-xs">
+              Tag
+            </Label>
+            <Select id="tag" name="tag" defaultValue={params.tag ?? ""}>
+              <option value="">All tags</option>
+              {(tags ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="from" className="text-xs">
+              From
+            </Label>
+            <Input id="from" name="from" type="date" defaultValue={params.from ?? ""} />
+          </div>
+          <div>
+            <Label htmlFor="to" className="text-xs">
+              To
+            </Label>
+            <Input id="to" name="to" type="date" defaultValue={params.to ?? ""} />
+          </div>
+          <Button type="submit" size="md">
+            Filter
+          </Button>
+          {hasFilters && (
+            <ButtonLink href="/dashboard" variant="ghost" size="md">
+              Clear
+            </ButtonLink>
           )}
-        </div>
-      </div>
-
-      <form method="get" className="mt-8 flex flex-wrap items-end gap-3">
-        <div>
-          <label htmlFor="q" className="block text-xs font-medium text-gray-500">
-            Search
-          </label>
-          <input
-            id="q"
-            name="q"
-            type="text"
-            defaultValue={params.q ?? ""}
-            placeholder="Search content..."
-            className="mt-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-          />
-        </div>
-        <div>
-          <label htmlFor="channel" className="block text-xs font-medium text-gray-500">
-            Channel
-          </label>
-          <select
-            id="channel"
-            name="channel"
-            defaultValue={params.channel ?? ""}
-            className="mt-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-          >
-            <option value="">All channels</option>
-            {(channels ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="tag" className="block text-xs font-medium text-gray-500">
-            Tag
-          </label>
-          <select
-            id="tag"
-            name="tag"
-            defaultValue={params.tag ?? ""}
-            className="mt-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-          >
-            <option value="">All tags</option>
-            {(tags ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="from" className="block text-xs font-medium text-gray-500">
-            From
-          </label>
-          <input
-            id="from"
-            name="from"
-            type="date"
-            defaultValue={params.from ?? ""}
-            className="mt-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-          />
-        </div>
-        <div>
-          <label htmlFor="to" className="block text-xs font-medium text-gray-500">
-            To
-          </label>
-          <input
-            id="to"
-            name="to"
-            type="date"
-            defaultValue={params.to ?? ""}
-            className="mt-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-          />
-        </div>
-        <button
-          type="submit"
-          className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
-        >
-          Filter
-        </button>
-        {(params.channel || params.tag || params.theme || params.from || params.to || params.q) && (
-          <Link href="/dashboard" className="text-sm text-gray-500 underline">
-            Clear
-          </Link>
-        )}
-      </form>
-
-      {membership.role !== "viewer" && (
-        <div className="mt-4">
-          <ProcessBacklogButton unclusteredCount={unclusteredCount ?? 0} />
-        </div>
-      )}
+        </form>
+      </Card>
 
       {params.theme && (
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           Showing feedback for theme:{" "}
-          <span className="font-medium text-gray-900 dark:text-gray-100">
-            {filteredTheme?.name ?? "unlabeled theme"}
-          </span>
+          <span className="font-medium text-foreground">{filteredTheme?.name ?? "unlabeled theme"}</span>
         </p>
       )}
 
-      <p className="mt-4 text-sm text-gray-500">{count ?? 0} result{count === 1 ? "" : "s"}</p>
+      <p className="mt-4 text-sm text-muted-foreground">
+        {count ?? 0} result{count === 1 ? "" : "s"}
+      </p>
 
       {items.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-neutral-700">
-          No feedback yet — log some, import a CSV, or embed the widget.
+        <div className="mt-4">
+          <EmptyState
+            title="No feedback yet"
+            description="Log some, import a CSV, or embed the widget to start collecting feedback."
+          />
         </div>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-md border border-gray-200 dark:border-neutral-800">
+        <Card className="mt-4 animate-slide-up overflow-x-auto p-0" style={{ animationDelay: "80ms" }}>
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-gray-500 dark:border-neutral-800">
-                <th className="p-3 font-normal">Content</th>
-                <th className="p-3 font-normal">Sentiment</th>
-                <th className="p-3 font-normal">Theme</th>
-                <th className="p-3 font-normal">Channel</th>
-                <th className="p-3 font-normal">Customer</th>
-                <th className="p-3 font-normal">Tags</th>
-                <th className="p-3 font-normal">Source</th>
-                <th className="p-3 font-normal">Date</th>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="p-3 font-medium">Content</th>
+                <th className="p-3 font-medium">Sentiment</th>
+                <th className="p-3 font-medium">Theme</th>
+                <th className="p-3 font-medium">Channel</th>
+                <th className="p-3 font-medium">Customer</th>
+                <th className="p-3 font-medium">Tags</th>
+                <th className="p-3 font-medium">Source</th>
+                <th className="p-3 font-medium">Date</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-100 dark:border-neutral-800">
+                <tr
+                  key={item.id}
+                  className="border-b border-border last:border-0 transition-colors hover:bg-surface-hover"
+                >
                   <td className="max-w-sm p-3">
                     <span className="line-clamp-2">{item.content}</span>
                   </td>
                   <td className="p-3 whitespace-nowrap">
-                    {item.sentiment ? (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${SENTIMENT_STYLES[item.sentiment] ?? ""}`}
-                      >
-                        {item.sentiment.replace("_", " ")}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
+                    <SentimentBadge sentiment={item.sentiment} />
                   </td>
                   <td className="p-3 whitespace-nowrap">
                     {item.themes?.name ?? (
-                      <span className="text-gray-400 italic">
+                      <span className="italic text-muted-foreground">
                         {item.themes ? "unlabeled" : "unclustered"}
                       </span>
                     )}
@@ -332,35 +257,35 @@ export default async function DashboardPage({
                       .filter(Boolean)
                       .join(", ") || "—"}
                   </td>
-                  <td className="p-3 whitespace-nowrap text-gray-500">{item.source}</td>
-                  <td className="p-3 whitespace-nowrap text-gray-500">
+                  <td className="p-3 whitespace-nowrap text-muted-foreground">{item.source}</td>
+                  <td className="p-3 whitespace-nowrap text-muted-foreground">
                     {new Date(item.created_at).toLocaleDateString()}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center gap-4 text-sm">
           {page > 1 ? (
-            <Link href={pageHref(page - 1)} className="underline">
+            <Link href={pageHref(page - 1)} className="font-medium text-primary hover:text-primary-hover">
               ← Previous
             </Link>
           ) : (
-            <span className="text-gray-300">← Previous</span>
+            <span className="text-muted-foreground/50">← Previous</span>
           )}
-          <span className="text-gray-500">
+          <span className="text-muted-foreground">
             Page {page} of {totalPages}
           </span>
           {page < totalPages ? (
-            <Link href={pageHref(page + 1)} className="underline">
+            <Link href={pageHref(page + 1)} className="font-medium text-primary hover:text-primary-hover">
               Next →
             </Link>
           ) : (
-            <span className="text-gray-300">Next →</span>
+            <span className="text-muted-foreground/50">Next →</span>
           )}
         </div>
       )}

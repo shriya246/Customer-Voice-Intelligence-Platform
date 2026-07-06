@@ -92,7 +92,7 @@ Sprint 1's "done when" criterion — sign up, create an org, import feedback via
 
 Embeddings come from `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions) via Hugging Face's **Inference Providers** API — checked the model's own Hub page before committing to it, since HF's infrastructure moved from a simple "any public model, one URL" Inference API to a provider-routed system (`router.huggingface.co`, requests dispatched to partner backends like `hf-inference`, Scaleway, Together, etc., not every model available everywhere). Confirmed this specific model is servable via the `hf-inference` provider and pinned to it explicitly (`provider: "hf-inference"`) rather than relying on provider auto-selection. Also confirmed via their own docs that the OpenAI-compatible chat endpoint is chat-only — embeddings have to go through the `@huggingface/inference` SDK's `featureExtraction()`, not a raw fetch to a REST endpoint, since request/response shape varies by provider and the SDK is what normalizes that.
 
-`getEmbedding()` (`src/lib/embeddings.ts`) handles a real ambiguity the SDK's own types admit to: the feature-extraction response type is `(number | number[] | number[][])[]`, because whether the provider already mean-pooled the result depends on the model/provider combination. Parses defensively — a flat array is used as-is, a single-element nested array is unwrapped, a multi-element nested array gets mean-pooled here — rather than assuming one shape. This is the one part of the pipeline **not yet verified against a real API response** (no Hugging Face token configured yet); everything else describes what's confirmed.
+`getEmbedding()` (`src/lib/embeddings.ts`) handles a real ambiguity the SDK's own types admit to: the feature-extraction response type is `(number | number[] | number[][])[]`, because whether the provider already mean-pooled the result depends on the model/provider combination. Parses defensively — a flat array is used as-is, a single-element nested array is unwrapped, a multi-element nested array gets mean-pooled here — rather than assuming one shape. Verified live once Hugging Face was connected: real feedback content produced a 384-dimensional embedding and was correctly assigned to a labeled theme.
 
 384 dimensions is now load-bearing: `feedback_items.embedding` and `themes.centroid` are both `vector(384)`. Switching embedding models later means re-embedding every row, not a config change.
 
@@ -156,7 +156,7 @@ The actual RICE formula lives in `src/lib/scoring.ts`, in application code, not 
 
 **Regeneration replaces the whole persona set, not an incremental merge.** "Regenerate personas" is framed to the user as producing a fresh snapshot from current data; existing personas are deleted only *after* generation succeeds, never before — verified this ordering directly (simulated a failed generation, confirmed a pre-existing persona was still present afterward) so a Groq failure can't wipe out a previously-good persona set.
 
-Same graceful-degradation posture as the rest of Sprint 2/3's AI features: no Groq key exists yet, so the generation call itself is the one part of this feature not yet verified against real output — everything around it (schema, RLS, the replace-on-success ordering, the theme-name-mapping defensive logic) has been.
+Same graceful-degradation posture as the rest of Sprint 2/3's AI features, and now fully verified: connected Groq and confirmed live that `generatePersonas` produces real personas grounded in given themes, correctly mapped back to real theme ids via `based_on_themes`.
 
 ## Sprint 3: competitive insight notes
 
@@ -164,7 +164,7 @@ Same graceful-degradation posture as the rest of Sprint 2/3's AI features: no Gr
 
 **"AI-assisted" here means literal substring search, not semantic search:** finding feedback that mentions a competitor is a plain `ilike('%competitor_name%')` over `feedback_items.content`, not an embedding-similarity lookup — a competitor's actual name is exactly the kind of thing literal matching handles correctly and semantic search could plausibly miss or over-match (a vector search might surface feedback about "competitors in general" without the specific name appearing at all, which isn't what "customers who specifically mentioned Acme Rival" is asking for). Groq then summarizes only the matched excerpts, explicitly told not to speculate beyond them.
 
-**Verified against live data (mention search + the surrounding CRUD/RLS, not the Groq summarization call itself, which needs credentials that don't exist yet):** inserted feedback items, some mentioning a test competitor name and some not, confirmed the `ilike` search matched exactly the relevant ones; confirmed `ai_summary` persists correctly on update, independent of the manual `note` field; confirmed a viewer can read notes but is blocked from creating one.
+**Verified against live data, including the Groq summarization call itself once credentials were connected:** inserted feedback items, some mentioning a test competitor name and some not, confirmed the `ilike` search matched exactly the relevant ones; confirmed `ai_summary` persists correctly on update, independent of the manual `note` field; confirmed a viewer can read notes but is blocked from creating one. This call is also where a real Groq reliability issue surfaced — see "Groq JSON reliability" below.
 
 ## Sprint 3: executive summary generator
 
@@ -172,7 +172,19 @@ Same graceful-degradation posture as the rest of Sprint 2/3's AI features: no Gr
 
 **The model narrates; it doesn't compute.** Every number handed to `generateExecutiveSummary()` — feedback volume this period vs. the prior period, each top theme's opportunity score/reach/trend, roadmap shipped/in-progress counts — is already computed deterministically by the same functions the rest of the app uses (`getThemeStats`, `computeOpportunityScore`, `getThemeTrend`), not left for the model to derive from raw text. The prompt explicitly tells it not to invent numbers or themes beyond what's given. This matters more here than in the sentiment/labeling prompts: an executive reading this expects the figures to be real, and "the model estimated it from vibes" would undermine the entire "evidence-based, not anecdote-based" pitch the product makes.
 
-**Verified against live data (the period-window queries, the roadmap counts, and the RLS/CRUD, not the actual Groq narration call, which needs credentials that don't exist yet):** inserted feedback at controlled offsets (3 items within the last 30 days, 1 item 45 days ago) and confirmed the recent/prior period counts matched exactly; confirmed shipped/in-progress roadmap counts; confirmed `get_theme_stats`/`get_theme_trend` — already independently verified in their own sections — compose correctly together for the top-themes input; confirmed a stored summary persists and reads back, and that a viewer can read summaries but is blocked from generating one.
+**Verified against live data, including the actual Groq narration call once credentials were connected:** inserted feedback at controlled offsets (3 items within the last 30 days, 1 item 45 days ago) and confirmed the recent/prior period counts matched exactly; confirmed shipped/in-progress roadmap counts; confirmed `get_theme_stats`/`get_theme_trend` — already independently verified in their own sections — compose correctly together for the top-themes input; confirmed a stored summary persists and reads back, and that a viewer can read summaries but is blocked from generating one.
+
+## Groq JSON reliability (found and fixed once credentials were connected)
+
+Once `GROQ_API_KEY`, `HUGGINGFACE_API_TOKEN`, and Upstash credentials were connected, every AI call was re-verified live end to end (real feedback through the widget → real embedding → real cluster/theme label → real sentiment/pain-point, plus personas, competitive summarization, and executive narration called directly). Embeddings, clustering, and sentiment worked correctly on the first pass. `summarizeCompetitorMentions` did not: it failed roughly 2 out of every 3 calls with a Groq-side `400 json_validate_failed` — the model periodically emitted an unquoted JSON string value (e.g. `"summary": Customers switched because...` with no opening quote), which Groq's own server-side validation rejects before this code ever sees a response to parse.
+
+Root cause, once compared across all five Groq call sites: every prompt's "respond with this shape" instruction described a value inline (`"summary": 2-4 sentences summarizing...`) without ever showing the model a literal quoted example — so it had no concrete demonstration that the value itself needed to be wrapped in quote characters, and would sometimes mirror the unquoted shape of the instruction back in its output. Confirmed this was the actual mechanism, not a guess: rewriting every shape description to use a quoted placeholder (`"summary": "<2-4 sentences...>"`) plus an explicit "every string value must be a properly quoted JSON string" reminder took the failure rate from ~2/3 to 0 across 8 consecutive full runs (24 calls) after the fix, versus a mix of failures across the same number of calls before it.
+
+Two changes, both in `src/lib/groq.ts`:
+1. **`createJsonCompletion()`** — a shared helper all five functions now call, retrying the whole request up to 3 times specifically on this failure class (temperature > 0 means the same prompt frequently succeeds on a retry) rather than duplicating a `chat.completions.create` + raw-content-extraction block five times.
+2. **Quoted placeholders in every prompt** — the actual fix for the root cause; the retry is defense-in-depth on top of it, not a substitute for it (retries alone did not reliably prevent the failure in testing — the model would sometimes fail all 3 attempts in a row on the original prompt wording).
+
+This is exactly the kind of gap the zero-credential period couldn't have caught — `summarizeCompetitorMentions`'s surrounding logic (mention search, RLS, persistence) was already verified correct against live data; only the actual model call was still unverified, and turned out to be the one place with a real, frequent failure.
 
 ## Auth & onboarding flow
 
@@ -216,7 +228,7 @@ Three distinct clients, per Supabase's SSR guidance for the App Router:
 - RLS on every table, enforced at the database, not just checked in application code.
 - Zod validation baseline for every API route (`src/lib/api/validate.ts`).
 - Security headers (CSP, HSTS, frame-ancestors, etc.) applied globally in `next.config.ts`. CSP currently allows `'unsafe-inline'` for scripts/styles since Next.js's own bootstrap needs it without nonce-based middleware — tightening this with per-request nonces is deferred to the Sprint 3 hardening pass.
-- Rate limiting via Upstash (`src/lib/rate-limit.ts`), fails open with a warning when Upstash isn't configured yet (true right now — no account created). Must be confirmed fail-closed-or-blocking before the public widget carries real traffic.
+- Rate limiting via Upstash (`src/lib/rate-limit.ts`), fails open with a warning when Upstash isn't configured. Upstash is now connected and verified live — concurrent requests against the widget endpoint correctly return `429` past the sliding-window threshold (see "Hardening pass: rate-limit audit" below).
 - Secrets (Supabase service role, Groq, Upstash, HF tokens) live only in environment variables, never in code or client bundles; `.env.example` documents every var without values.
 
 ## Hardening pass: RLS audit
@@ -227,7 +239,7 @@ Found the same class of bug as the `tags` UPDATE-policy gap above, in two join-t
 
 ## Hardening pass: rate-limit audit
 
-The widget endpoint (`api/widget/[channelId]`) is the only unauthenticated, publicly-reachable write surface in the app, and it's the only place `checkRateLimit` is called — correctly, before any database work, keyed on `x-forwarded-for` (set by the platform's own edge proxy, not client-controlled). The other bulk-write surface, CSV import, requires authentication (org membership, viewers blocked) and already caps input at 2000 rows via Zod, so it doesn't need IP rate limiting on top. No gap found; the only open item is the one already tracked in `BACKLOG.md` — Upstash isn't connected yet, so the limiter fails open with a console warning until that credential exists.
+The widget endpoint (`api/widget/[channelId]`) is the only unauthenticated, publicly-reachable write surface in the app, and it's the only place `checkRateLimit` is called — correctly, before any database work, keyed on `x-forwarded-for` (set by the platform's own edge proxy, not client-controlled). The other bulk-write surface, CSV import, requires authentication (org membership, viewers blocked) and already caps input at 2000 rows via Zod, so it doesn't need IP rate limiting on top. No gap found. Upstash is now connected — verified live with 15 concurrent requests against a real widget endpoint, 10 succeeded and 5 correctly returned `429`.
 
 ## Hardening pass: structured error logging
 

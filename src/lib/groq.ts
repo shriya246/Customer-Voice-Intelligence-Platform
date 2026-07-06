@@ -1,6 +1,7 @@
 import "server-only";
 import Groq from "groq-sdk";
 import { z } from "zod";
+import { logError } from "@/lib/log-error";
 
 // Confirmed against Groq's own model docs rather than assumed from memory.
 const MODEL = "llama-3.3-70b-versatile";
@@ -19,13 +20,55 @@ function getClient(): Groq {
   return client;
 }
 
+type ChatMessage = { role: "system" | "user"; content: string };
+
+const MAX_JSON_ATTEMPTS = 3;
+
 /**
  * Uses the older, more broadly-supported `json_object` response mode rather
  * than strict `json_schema` structured outputs -- not confirmed that
  * llama-3.3-70b-versatile reliably supports strict schema adherence on
  * Groq, so parsing+validating the result with Zod here is the safer bet
  * over trusting the model to match a schema exactly.
+ *
+ * Confirmed live (not hypothetical): Groq's own server-side JSON validation
+ * rejects roughly 1 in 3 real calls with a 400 `json_validate_failed` --
+ * the model periodically emits an unquoted string value (e.g.
+ * `"summary": Customers switched because...` with no opening quote) --
+ * before this code ever gets a chance to parse or validate anything. Retries
+ * the whole request a few times on that specific failure, since the same
+ * prompt at temperature > 0 frequently succeeds on the next attempt.
  */
+async function createJsonCompletion(messages: ChatMessage[]): Promise<string> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_JSON_ATTEMPTS; attempt++) {
+    try {
+      const completion = await getClient().chat.completions.create({
+        model: MODEL,
+        response_format: { type: "json_object" },
+        messages,
+      });
+      const raw = completion.choices[0]?.message?.content;
+      if (!raw) throw new Error("Groq returned no content");
+      return raw;
+    } catch (error) {
+      lastError = error;
+      logError("groq.json_completion_attempt_failed", error, { attempt, maxAttempts: MAX_JSON_ATTEMPTS });
+    }
+  }
+  throw lastError;
+}
+
+// Appended to every system prompt below -- shape descriptions that just
+// describe a value inline (`"summary": 2-4 sentences...`) without showing
+// literal quote characters around it turned out to make the model mirror
+// that same unquoted shape in its actual output (confirmed live: this was
+// the direct cause of the json_validate_failed failures above). Showing a
+// quoted placeholder plus this explicit instruction cut the failure rate
+// substantially in testing.
+const JSON_STRING_REMINDER =
+  " Every string value must be a properly quoted JSON string (e.g. \"summary\": \"your text here\"), never bare/unquoted text.";
+
 const sentimentSchema = z.object({
   sentiment: z.enum(["very_negative", "negative", "neutral", "positive", "very_positive"]),
   sentiment_score: z.number().min(-1).max(1),
@@ -35,24 +78,18 @@ const sentimentSchema = z.object({
 export type SentimentResult = z.infer<typeof sentimentSchema>;
 
 export async function analyzeSentiment(content: string): Promise<SentimentResult> {
-  const completion = await getClient().chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "You classify customer feedback sentiment. Respond only with JSON matching exactly this shape: " +
-          '{"sentiment": one of "very_negative", "negative", "neutral", "positive", "very_positive", ' +
-          '"sentiment_score": a number from -1 (very negative) to 1 (very positive), ' +
-          '"pain_point": a short phrase (under 15 words) naming the core complaint, or null if this feedback is not a complaint}',
-      },
-      { role: "user", content },
-    ],
-  });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("Groq returned no content for sentiment analysis");
+  const raw = await createJsonCompletion([
+    {
+      role: "system",
+      content:
+        "You classify customer feedback sentiment. Respond only with JSON matching exactly this shape: " +
+        '{"sentiment": "very_negative" | "negative" | "neutral" | "positive" | "very_positive", ' +
+        '"sentiment_score": -1 to 1 (a number, not a string), ' +
+        '"pain_point": "<a short phrase under 15 words naming the core complaint>" or null if this feedback is not a complaint}.' +
+        JSON_STRING_REMINDER,
+    },
+    { role: "user", content },
+  ]);
 
   return sentimentSchema.parse(JSON.parse(raw));
 }
@@ -67,26 +104,20 @@ export type ThemeLabelResult = z.infer<typeof themeLabelSchema>;
 export async function generateThemeLabel(
   sampleContents: string[]
 ): Promise<ThemeLabelResult> {
-  const completion = await getClient().chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "You label clusters of customer feedback that were grouped together as describing the same underlying issue. " +
-          'Respond only with JSON matching exactly this shape: {"name": a short label under 8 words identifying the shared theme, ' +
-          '"summary": a 1-2 sentence summary of what customers are saying}.',
-      },
-      {
-        role: "user",
-        content: sampleContents.map((c, i) => `${i + 1}. ${c}`).join("\n"),
-      },
-    ],
-  });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("Groq returned no content for theme labeling");
+  const raw = await createJsonCompletion([
+    {
+      role: "system",
+      content:
+        "You label clusters of customer feedback that were grouped together as describing the same underlying issue. " +
+        'Respond only with JSON matching exactly this shape: {"name": "<a short label under 8 words identifying the shared theme>", ' +
+        '"summary": "<a 1-2 sentence summary of what customers are saying>"}.' +
+        JSON_STRING_REMINDER,
+    },
+    {
+      role: "user",
+      content: sampleContents.map((c, i) => `${i + 1}. ${c}`).join("\n"),
+    },
+  ]);
 
   return themeLabelSchema.parse(JSON.parse(raw));
 }
@@ -117,25 +148,19 @@ export async function generatePersonas(
     .map((t, i) => `${i + 1}. ${t.name}${t.summary ? ` — ${t.summary}` : ""}`)
     .join("\n");
 
-  const completion = await getClient().chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "You synthesize customer personas from real, already-clustered feedback themes -- these are data-backed personas, not hypothetical ones, so every persona must be grounded in the actual themes given. " +
-          'Respond only with JSON matching exactly this shape: {"personas": [{"name": a short persona archetype name under 6 words, ' +
-          '"description": 2-3 sentences describing who this customer is, what they care about, and why, grounded in the themes below, ' +
-          '"based_on_themes": an array of the exact theme name strings from the list below that this persona is drawn from -- copy them verbatim, do not invent new ones}]}. ' +
-          "Produce 2 to 4 personas, each grounded in at least one theme. Do not reference any theme name not in the list provided.",
-      },
-      { role: "user", content: `Themes:\n${themeList}` },
-    ],
-  });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("Groq returned no content for persona generation");
+  const raw = await createJsonCompletion([
+    {
+      role: "system",
+      content:
+        "You synthesize customer personas from real, already-clustered feedback themes -- these are data-backed personas, not hypothetical ones, so every persona must be grounded in the actual themes given. " +
+        'Respond only with JSON matching exactly this shape: {"personas": [{"name": "<a short persona archetype name under 6 words>", ' +
+        '"description": "<2-3 sentences describing who this customer is, what they care about, and why, grounded in the themes below>", ' +
+        '"based_on_themes": ["<exact theme name strings from the list below that this persona is drawn from -- copy them verbatim, do not invent new ones>"]}]}. ' +
+        "Produce 2 to 4 personas, each grounded in at least one theme. Do not reference any theme name not in the list provided." +
+        JSON_STRING_REMINDER,
+    },
+    { role: "user", content: `Themes:\n${themeList}` },
+  ]);
 
   return personasResponseSchema.parse(JSON.parse(raw)).personas;
 }
@@ -153,26 +178,20 @@ export async function summarizeCompetitorMentions(
   competitorName: string,
   mentions: string[]
 ): Promise<string> {
-  const completion = await getClient().chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          `You summarize what customers say about a competitor ("${competitorName}") based on real feedback excerpts that mention them. ` +
-          'Respond only with JSON matching exactly this shape: {"summary": 2-4 sentences summarizing the recurring themes in how customers compare VoiceIQ\'s customer\'s product to this competitor -- pricing, missing features, switching reasons, whatever actually recurs}. ' +
-          "Base this only on the excerpts given, don't speculate beyond them.",
-      },
-      {
-        role: "user",
-        content: mentions.map((m, i) => `${i + 1}. ${m}`).join("\n"),
-      },
-    ],
-  });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("Groq returned no content for competitor summarization");
+  const raw = await createJsonCompletion([
+    {
+      role: "system",
+      content:
+        `You summarize what customers say about a competitor ("${competitorName}") based on real feedback excerpts that mention them. ` +
+        'Respond only with JSON matching exactly this shape: {"summary": "<2-4 sentences summarizing the recurring themes in how customers compare VoiceIQ\'s customer\'s product to this competitor -- pricing, missing features, switching reasons, whatever actually recurs>"}. ' +
+        "Base this only on the excerpts given, don't speculate beyond them." +
+        JSON_STRING_REMINDER,
+    },
+    {
+      role: "user",
+      content: mentions.map((m, i) => `${i + 1}. ${m}`).join("\n"),
+    },
+  ]);
 
   return competitorSummarySchema.parse(JSON.parse(raw)).summary;
 }
@@ -207,29 +226,23 @@ export async function generateExecutiveSummary(input: ExecutiveSummaryInput): Pr
     )
     .join("\n");
 
-  const completion = await getClient().chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "You write a short executive narrative summarizing what customers are asking for and why it matters to the business, for a CPO/VP Product audience who won't read raw tickets. " +
-          "Use only the structured data given -- do not invent numbers, themes, or trends not present in it. " +
-          'Respond only with JSON matching exactly this shape: {"summary": 3-5 sentences, plain language, no bullet points, written as prose a CPO would read in a board deck}.',
-      },
-      {
-        role: "user",
-        content:
-          `Feedback volume: ${input.totalFeedbackThisPeriod} items this period vs ${input.totalFeedbackPriorPeriod} the prior period.\n` +
-          `Top opportunities:\n${themesText || "(none yet)"}\n` +
-          `Roadmap: ${input.shippedCount} shipped, ${input.inProgressCount} in progress this period.`,
-      },
-    ],
-  });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("Groq returned no content for executive summary");
+  const raw = await createJsonCompletion([
+    {
+      role: "system",
+      content:
+        "You write a short executive narrative summarizing what customers are asking for and why it matters to the business, for a CPO/VP Product audience who won't read raw tickets. " +
+        "Use only the structured data given -- do not invent numbers, themes, or trends not present in it. " +
+        'Respond only with JSON matching exactly this shape: {"summary": "<3-5 sentences, plain language, no bullet points, written as prose a CPO would read in a board deck>"}.' +
+        JSON_STRING_REMINDER,
+    },
+    {
+      role: "user",
+      content:
+        `Feedback volume: ${input.totalFeedbackThisPeriod} items this period vs ${input.totalFeedbackPriorPeriod} the prior period.\n` +
+        `Top opportunities:\n${themesText || "(none yet)"}\n` +
+        `Roadmap: ${input.shippedCount} shipped, ${input.inProgressCount} in progress this period.`,
+    },
+  ]);
 
   return execSummarySchema.parse(JSON.parse(raw)).summary;
 }

@@ -7,8 +7,8 @@ Last updated: end of Sprint 2.
 The three sprints that take this from nothing to a demoable end-to-end loop.
 
 - **Sprint 1 — Foundation & Feedback Ingestion:** multi-tenant auth/org/RBAC, core schema, three ingestion paths (manual, CSV, widget), filterable feedback list. *Done.* A user can sign up, create an org, invite teammates, import feedback via CSV or the embeddable widget (or log it manually), and browse/filter the result.
-- **Sprint 2 — AI Clustering, Sentiment, and Opportunity Scoring:** embedding + clustering pipeline, sentiment/pain-point extraction, RICE-based opportunity scoring, trend view. *Done.* Feedback is automatically embedded, clustered into AI-labeled themes, sentiment-tagged, and scored; a trend view shows which themes are rising or falling. Pipeline verified against real data end to end; the underlying Hugging Face/Groq accounts aren't connected yet, so real embeddings/AI output are still unverified pending those credentials.
-- **Sprint 3 — Personas, Roadmap Integration, Executive Layer:** data-backed personas, roadmap tracker linked to themes, competitive insight notes, auto-drafted executive summary, security/test hardening pass. *In progress.*
+- **Sprint 2 — AI Clustering, Sentiment, and Opportunity Scoring:** embedding + clustering pipeline, sentiment/pain-point extraction, RICE-based opportunity scoring, trend view. *Done.* Feedback is automatically embedded, clustered into AI-labeled themes, sentiment-tagged, and scored; a trend view shows which themes are rising or falling. Pipeline verified against real data end to end, including real Hugging Face embeddings and real Groq output once those accounts were connected.
+- **Sprint 3 — Personas, Roadmap Integration, Executive Layer:** data-backed personas, roadmap tracker linked to themes, competitive insight notes, auto-drafted executive summary, security/test hardening pass. *Done.* Groq, Hugging Face, and Upstash are connected and verified live; Vercel deployment is the one remaining external connection.
 
 Full detail on each sprint's scope lives in [PROJECT_PLAN.md](./PROJECT_PLAN.md) and [PRD.md](./PRD.md).
 

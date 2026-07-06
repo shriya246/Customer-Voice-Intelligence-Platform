@@ -16,7 +16,7 @@ Done when: a user can sign up, create an org, import a batch of feedback via CSV
 - [x] **Feedback ingestion: manual entry** — form + Zod validation + storage
 - [x] **Feedback ingestion: CSV import** — upload, column mapping, preview, bulk insert, per-row error reporting
 - [x] **Feedback ingestion: public widget embed** — embeddable snippet + public rate-limited API endpoint writing into a channel
-  - [ ] *Follow-up:* Upstash not connected yet — rate limiting fails open with a console warning until credentials exist (see chat)
+  - [x] *Follow-up:* Upstash connected — rate limiting verified live (concurrent requests against the widget endpoint correctly return 429 past the sliding-window threshold)
 - [x] **Feedback list/table view** — filter by channel, date range, tag; search; pagination
 
 ## Sprint 2 — AI Clustering, Sentiment, and Opportunity Scoring
@@ -24,11 +24,11 @@ Done when: a user can sign up, create an org, import a batch of feedback via CSV
 Done when: imported feedback is auto-clustered into labeled themes with sentiment, and each theme has a computed opportunity score.
 
 - [x] Embedding pipeline (pgvector) for feedback items
-  - [ ] *Follow-up:* Hugging Face token not connected yet — embedding fails open (item stays unclustered) until credentials exist (see chat)
+  - [x] *Follow-up:* Hugging Face connected — verified live, real feedback content correctly embedded and clustered into a labeled theme
 - [x] Clustering job grouping feedback into themes
 - [x] AI-generated theme labels + summaries (Groq)
 - [x] Sentiment tagging + pain-point extraction per feedback item (Groq)
-  - [ ] *Follow-up:* Groq key not connected yet — sentiment/labeling fail open (item stays unanalyzed) until credentials exist (see chat)
+  - [x] *Follow-up:* Groq connected — verified live, real feedback correctly sentiment-tagged with an extracted pain point
 - [x] Opportunity scoring engine (RICE-based, per `RICE_PRIORITIZATION.md`)
 - [x] Trend view — themes over time, rising/falling
 - [x] PM docs: `OPPORTUNITY_FRAMEWORK.md`, `RICE_PRIORITIZATION.md`, `ARCHITECTURE.md` pipeline write-up, `EXECUTIVE_SUMMARY.md` update
@@ -38,11 +38,11 @@ Done when: imported feedback is auto-clustered into labeled themes with sentimen
 Done when: the full loop (feedback in → clustered/scored → persona/roadmap/executive output) is demoable end to end and deployed.
 
 - [x] AI-generated, data-backed personas from clustered feedback
-  - [ ] *Follow-up:* Groq key not connected yet — generation call itself unverified until credentials exist (see chat)
+  - [x] *Follow-up:* Groq connected — verified live, produces real personas grounded in given themes
 - [x] Feature request tracker linked to themes, with roadmap status
 - [x] Competitive insight notes field (manual + AI-assisted summarization)
-  - [ ] *Follow-up:* Groq key not connected yet — the "summarize mentions" call itself unverified until credentials exist (see chat)
+  - [x] *Follow-up:* Groq connected — verified live; this call surfaced a real bug (Groq's own JSON validation rejecting ~2/3 of calls due to an unquoted string value) fixed by tightening the prompt's shape example and adding a retry, see `PROGRESS_LOG.md`
 - [x] Executive summary generator (auto-drafted narrative)
-  - [ ] *Follow-up:* Groq key not connected yet — the narration call itself unverified until credentials exist (see chat)
+  - [x] *Follow-up:* Groq connected — verified live, produces a real narrative grounded in the given numbers
 - [x] Hardening pass: RLS audit, rate-limit audit, error tracking, core-flow test coverage
 - [x] PM docs: `GTM_STRATEGY.md`, `PRICING_STRATEGY.md`, final `EXECUTIVE_SUMMARY.md`, one-page Executive Presentation doc
